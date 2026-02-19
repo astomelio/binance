@@ -1,0 +1,14 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-binance==1.0.19
+requests==2.31.0
+python-dotenv==1.0.0
+pydantic==2.5.0
+websockets==13.1
+scikit-learn==1.8.0
+lightgbm==4.6.0
+optuna==4.7.0
+optuna-dashboard==0.20.0
+mlflow==3.9.0
+protobuf==4.25.8
+duckdb==1.4.2

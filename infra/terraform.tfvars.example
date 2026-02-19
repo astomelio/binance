@@ -1,0 +1,18 @@
+project_id                 = "your-gcp-project-id"
+region                     = "us-central1"
+image_tag                  = "latest"
+cpu_limit                  = "2"
+memory_limit               = "512Mi"
+min_instances              = 0
+max_instances              = 10
+allow_public_access        = false
+allow_authenticated_access = true
+
+enable_dagster             = true
+dagster_image_tag          = "latest"
+dagster_cpu_limit          = "1"
+dagster_memory_limit       = "1Gi"
+dagster_min_instances      = 1
+dagster_max_instances      = 1
+dagster_allow_public_access = false
+dagster_sql_tier           = "db-g1-small"

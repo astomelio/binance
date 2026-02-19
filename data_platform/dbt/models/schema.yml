@@ -1,0 +1,56 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: market_snapshot_raw
+      - name: derivatives_snapshot_raw
+      - name: derivatives_flow_raw
+      - name: cross_exchange_snapshot_raw
+      - name: dex_snapshot_raw
+      - name: global_market_raw
+      - name: fear_greed_raw
+      - name: macro_rates_raw
+      - name: fed_calendar_raw
+
+models:
+  - name: br_market_snapshot
+    columns:
+      - name: event_time
+        tests:
+          - not_null
+      - name: symbol
+        tests:
+          - not_null
+  - name: slv_decision_features
+    columns:
+      - name: event_time
+        tests:
+          - not_null
+      - name: symbol
+        tests:
+          - not_null
+  - name: fct_decision_features
+    columns:
+      - name: feature_id
+        tests:
+          - not_null
+          - unique
+      - name: symbol
+        tests:
+          - not_null
+      - name: event_time
+        tests:
+          - not_null
+      - name: alpha_score
+        description: "Composite alpha score blending microstructure, momentum, session, liquidity, cross-exchange, and DEX signals"
+      - name: fwd_return_1h
+        description: "Forward return 1h ahead (label for training)"
+      - name: fwd_return_4h
+        description: "Forward return 4h ahead (label for training)"
+      - name: fwd_return_24h
+        description: "Forward return 24h ahead (label for training)"
+      - name: regime_combo
+        description: "Regime combination (BULL/BEAR/NEUTRAL__HIGH_VOL/LOW_VOL) for policy blocking"
+

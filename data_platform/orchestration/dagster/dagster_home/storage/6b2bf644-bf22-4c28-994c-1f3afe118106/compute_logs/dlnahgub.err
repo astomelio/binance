@@ -1,0 +1,5 @@
+2026-02-10 09:03:28 +0000 - dagster - DEBUG - __ASSET_JOB - 6b2bf644-bf22-4c28-994c-1f3afe118106 - 952 - LOGS_CAPTURED - Started capturing logs in process (pid: 952).
+2026-02-10 09:03:28 +0000 - dagster - DEBUG - __ASSET_JOB - 6b2bf644-bf22-4c28-994c-1f3afe118106 - 952 - gold_features - STEP_START - Started execution of step "gold_features".
+2026-02-10 09:03:28 +0000 - dagster - DEBUG - __ASSET_JOB - 6b2bf644-bf22-4c28-994c-1f3afe118106 - 952 - gold_features - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-02-10 09:03:28 +0000 - dagster - DEBUG - __ASSET_JOB - 6b2bf644-bf22-4c28-994c-1f3afe118106 - 952 - gold_features - ASSET_MATERIALIZATION - Materialized value gold_features.
+2026-02-10 09:03:28 +0000 - dagster - DEBUG - __ASSET_JOB - 6b2bf644-bf22-4c28-994c-1f3afe118106 - 952 - gold_features - STEP_SUCCESS - Finished execution of step "gold_features" in 50ms.

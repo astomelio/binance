@@ -1,0 +1,13 @@
+crypto_trading_lakehouse:
+  target: prod
+  outputs:
+    prod:
+      type: bigquery
+      method: service-account
+      project: your-gcp-project-id
+      dataset: crypto_analytics
+      threads: 4
+      timeout_seconds: 300
+      location: US
+      keyfile: /path/to/service-account.json
+

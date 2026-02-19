@@ -1,0 +1,17 @@
+crypto_trading_lakehouse:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('DBT_DUCKDB_PATH', 'artifacts/warehouse/crypto.duckdb') }}"
+      schema: main
+      threads: 4
+    prod:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('DBT_GCP_PROJECT', 'change-me-gcp-project') }}"
+      dataset: "{{ env_var('DBT_DATASET', 'crypto_raw') }}"
+      threads: 4
+      timeout_seconds: 300
+      location: "{{ env_var('DBT_GCP_LOCATION', 'US') }}"
+      priority: interactive

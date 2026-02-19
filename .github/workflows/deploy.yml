@@ -1,0 +1,211 @@
+name: Deploy to GCP Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: us-central1
+  SERVICE_NAME: binance-connector-api
+  ARTIFACT_REGISTRY: ${{ secrets.GCP_PROJECT_ID }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/binance-api
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v --cov=. --cov-report=xml
+        env:
+          BINANCE_TESTNET: "true"
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name != 'pull_request'
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          export_default_credentials: true
+
+      - name: Configure Docker for GCR
+        run: |
+          gcloud auth configure-docker $GCP_REGION-docker.pkg.dev --quiet
+
+      - name: Resolve image tag
+        id: meta
+        run: echo "image_tag=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
+      - name: Build Docker images
+        run: |
+          IMAGE_TAG=${{ steps.meta.outputs.image_tag }}
+          docker build -t $ARTIFACT_REGISTRY/binance-api:$IMAGE_TAG .
+          docker build -f Dockerfile.dagster -t $ARTIFACT_REGISTRY/dagster-orchestrator:$IMAGE_TAG .
+          docker tag $ARTIFACT_REGISTRY/binance-api:$IMAGE_TAG $ARTIFACT_REGISTRY/binance-api:latest
+          docker tag $ARTIFACT_REGISTRY/dagster-orchestrator:$IMAGE_TAG $ARTIFACT_REGISTRY/dagster-orchestrator:latest
+
+      - name: Push Docker images
+        run: |
+          IMAGE_TAG=${{ steps.meta.outputs.image_tag }}
+          docker push $ARTIFACT_REGISTRY/binance-api:$IMAGE_TAG
+          docker push $ARTIFACT_REGISTRY/binance-api:latest
+          docker push $ARTIFACT_REGISTRY/dagster-orchestrator:$IMAGE_TAG
+          docker push $ARTIFACT_REGISTRY/dagster-orchestrator:latest
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          export_default_credentials: true
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+
+      - name: Terraform Init
+        working-directory: ./infra
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TERRAFORM_STATE_BUCKET }}" \
+            -backend-config="prefix=terraform/state"
+
+      - name: Terraform Plan
+        working-directory: ./infra
+        run: |
+          terraform plan \
+            -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="region=${{ env.GCP_REGION }}" \
+            -var="image_tag=${{ needs.build.outputs.image_tag }}" \
+            -var="dagster_image_tag=${{ needs.build.outputs.image_tag }}" \
+            -out=tfplan
+
+      - name: Save Terraform Plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-plan
+          path: infra/tfplan
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: 
+      name: ${{ github.event.inputs.environment || 'production' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          export_default_credentials: true
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v3
+        with:
+          name: terraform-plan
+          path: infra
+
+      - name: Terraform Init
+        working-directory: ./infra
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TERRAFORM_STATE_BUCKET }}" \
+            -backend-config="prefix=terraform/state"
+
+      - name: Terraform Apply
+        working-directory: ./infra
+        run: terraform apply -auto-approve tfplan
+
+      - name: Get Service URL
+        id: service-url
+        run: |
+          SERVICE_URL=$(terraform output -raw service_url -state=infra/tfplan 2>/dev/null || echo "")
+          echo "url=$SERVICE_URL" >> $GITHUB_OUTPUT
+
+      - name: Health Check
+        run: |
+          sleep 30
+          curl -f ${{ steps.service-url.outputs.url }}/health || exit 1
+
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Deployment successful! Service URL: ${{ steps.service-url.outputs.url }}'
+            })

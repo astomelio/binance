@@ -1,0 +1,5 @@
+2026-02-10 09:03:20 +0000 - dagster - DEBUG - __ASSET_JOB - 6b2bf644-bf22-4c28-994c-1f3afe118106 - 728 - LOGS_CAPTURED - Started capturing logs in process (pid: 728).
+2026-02-10 09:03:20 +0000 - dagster - DEBUG - __ASSET_JOB - 6b2bf644-bf22-4c28-994c-1f3afe118106 - 728 - bronze_ingestion - STEP_START - Started execution of step "bronze_ingestion".
+2026-02-10 09:03:26 +0000 - dagster - DEBUG - __ASSET_JOB - 6b2bf644-bf22-4c28-994c-1f3afe118106 - 728 - bronze_ingestion - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-02-10 09:03:26 +0000 - dagster - DEBUG - __ASSET_JOB - 6b2bf644-bf22-4c28-994c-1f3afe118106 - 728 - bronze_ingestion - ASSET_MATERIALIZATION - Materialized value bronze_ingestion.
+2026-02-10 09:03:26 +0000 - dagster - DEBUG - __ASSET_JOB - 6b2bf644-bf22-4c28-994c-1f3afe118106 - 728 - bronze_ingestion - STEP_SUCCESS - Finished execution of step "bronze_ingestion" in 5.61s.

@@ -1,0 +1,33 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+COPY requirements-dagster.txt .
+
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -r requirements-dagster.txt && \
+    pip install --no-cache-dir psycopg2-binary==2.9.9
+
+COPY . .
+
+RUN useradd --create-home --shell /bin/bash app \
+    && chown -R app:app /app
+USER app
+
+EXPOSE 3000
+
+ENV DAGSTER_HOME=/app/data_platform/orchestration/dagster/dagster_home
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD curl -f http://localhost:3000/server_info || exit 1
+
+# Run daemon + webserver in one service for Cloud Run simplicity
+CMD ["/bin/sh", "-c", "dagster-daemon run -w /app/data_platform/orchestration/dagster/workspace.yaml & dagster-webserver -w /app/data_platform/orchestration/dagster/workspace.yaml -h 0.0.0.0 -p 3000"]
+

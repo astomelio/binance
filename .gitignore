@@ -1,0 +1,85 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Logs
+*.log
+logs/
+
+# Terraform
+infra/.terraform/
+infra/.terraform.lock.hcl
+infra/terraform.tfstate
+infra/terraform.tfstate.backup
+infra/*.tfvars
+infra/backend.tf
+infra/tfplan
+infra/.terraform.tfstate.lock.info
+
+# GCP
+*.json
+!package.json
+github-actions-key.json
+service-account-key.json
+
+# Docker
+.dockerignore
+
+# Backup files
+*.backup
+*.bak
+
+# Chalice (legacy)
+.chalice/
+.chalice/deployed/
+
+# Coverage
+coverage.xml
+*.cover
+
+# Local data lake
+data_lake/

@@ -1,0 +1,5 @@
+[bronze] binance_local_api/market_snapshot: 3 rows -> /app/data_lake/bronze/binance_local_api/market_snapshot/dt=2026-02-10/hour=09/part-20260210T090326.jsonl
+[bronze] coingecko/global_market: 1 rows -> /app/data_lake/bronze/coingecko/global_market/dt=2026-02-10/hour=09/part-20260210T090326.jsonl
+[bronze] fred/macro_rates: 1 rows -> /app/data_lake/bronze/fred/macro_rates/dt=2026-02-10/hour=09/part-20260210T090326.jsonl
+[bronze] fed_calendar/decision_dates: 1 rows -> /app/data_lake/bronze/fed_calendar/decision_dates/dt=2026-02-10/hour=09/part-20260210T090326.jsonl
+[bronze] onchain_provider/onchain_snapshot: 1 rows -> /app/data_lake/bronze/onchain_provider/onchain_snapshot/dt=2026-02-10/hour=09/part-20260210T090326.jsonl
