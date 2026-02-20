@@ -131,11 +131,56 @@ data-all:
 data-backfill:
 	python -m data_platform.backfill_historical --days 30 --interval 1h
 
+# Símbolos: DP_SYMBOLS=BTCUSDT,ETHUSDT o DP_SYMBOLS=all para todas las USDT perpetual
+symbols-list:
+	venv/bin/python -m data_platform.scripts.list_symbols
+
+symbols-list-all:
+	venv/bin/python -m data_platform.scripts.list_symbols --all
+
 # Warehouse backfill: years of historical data -> bronze -> DuckDB -> dbt
 # 1) Backfill bronze with ~3 years of klines (market, derivatives, flow)
 warehouse-backfill:
 	@echo "📊 Backfilling bronze with historical data (~3 years)..."
 	@venv/bin/python -m data_platform.backfill_bronze_historical --days 1095 --interval 1h
+
+# Backfill con TODAS las USDT perpetual (~500 símbolos, tarda horas)
+warehouse-backfill-all:
+	@echo "📊 Backfilling ALL symbols (~500, ~3 years)..."
+	@DP_SYMBOLS=all LAKE_ROOT="$(shell pwd)/data_lake" venv/bin/python -m data_platform.backfill_bronze_historical --days 1095 --interval 1h
+
+# Backfill RÁPIDO desde data.binance.vision (1h, funding + OI)
+warehouse-backfill-vision:
+	@echo "📊 Backfill from data.binance.vision (1h, top ~20, funding + OI)..."
+	@DP_SYMBOLS=top LAKE_ROOT="$(shell pwd)/data_lake" venv/bin/python -m data_platform.backfill_from_vision --interval 1h --months 36
+	@echo "✅ Done. Next: make warehouse-load"
+
+# Backfill TODAS las monedas (1h, ~500 símbolos). OI ~90 min.
+warehouse-backfill-vision-all:
+	@echo "📊 Backfill 1h TODAS las monedas (data.binance.vision)..."
+	@DP_SYMBOLS=all LAKE_ROOT="$(shell pwd)/data_lake" venv/bin/python -m data_platform.backfill_from_vision --interval 1h --months 36
+	@echo "✅ Done. Next: make warehouse-load"
+
+# Backfill en PC remoto (más memoria) y sincroniza DuckDB aquí
+# REMOTE_HOST=user@ip-pc-b make warehouse-remote-backfill
+warehouse-remote-backfill:
+	@REMOTE_HOST="$${REMOTE_HOST:?Set REMOTE_HOST=user@ip-pc-b}" \
+	REMOTE_PATH="$${REMOTE_PATH:-~/binance}" \
+	LOCAL_PATH="$(shell pwd)" \
+	bash scripts/remote_backfill.sh
+
+# Solo sincronizar desde remoto: make warehouse-remote-sync REMOTE_HOST=user@ip
+warehouse-remote-sync:
+	@REMOTE_HOST="$${REMOTE_HOST:?Set REMOTE_HOST=user@ip-pc-b}" \
+	REMOTE_PATH="$${REMOTE_PATH:-~/binance}" \
+	LOCAL_PATH="$(shell pwd)" \
+	bash scripts/remote_sync.sh all
+
+# Igual pero sin OI (más rápido, ~1-2h solo klines+funding)
+warehouse-backfill-vision-all-fast:
+	@echo "📊 Backfill 1h TODAS (sin OI, más rápido)..."
+	@DP_SYMBOLS=all LAKE_ROOT="$(shell pwd)/data_lake" venv/bin/python -m data_platform.backfill_from_vision --interval 1h --months 36 --no-open-interest
+	@echo "✅ Done. Next: make warehouse-load"
 
 # 2) Load bronze into DuckDB + run dbt (populates br_*, slv_*, fct_*)
 warehouse-load:
@@ -147,15 +192,55 @@ warehouse-load:
 # Full pipeline: backfill bronze + load to DuckDB + dbt
 warehouse-backfill-full: warehouse-backfill warehouse-load
 
-# dbt modeling
+# Fill ONLY empty tables (cross_exchange, dex, fear_greed) - NO toca las demás
+warehouse-fill-empty:
+	@LAKE_ROOT="$(shell pwd)/data_lake" venv/bin/python -m data_platform.scripts.fill_empty_tables
+
+# Reset warehouse: delete DB, reload clean (CIERRA DBeaver antes)
+warehouse-reset:
+	@echo "⚠️  Cierra DBeaver antes de ejecutar"
+	@LAKE_ROOT="$(shell pwd)/data_lake" venv/bin/python -m data_platform.scripts.reset_warehouse
+
+# dbt modeling (DB_PATH = artifacts/warehouse/crypto.duckdb)
 dbt-seed:
-	cd data_platform/dbt && dbt seed --target local --profiles-dir .
+	cd data_platform/dbt && DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" $(shell pwd)/venv/bin/dbt seed --target local --profiles-dir .
 
 dbt-run:
-	cd data_platform/dbt && dbt run --target local --profiles-dir .
+	cd data_platform/dbt && DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" $(shell pwd)/venv/bin/dbt run --target local --profiles-dir .
 
 dbt-test:
-	cd data_platform/dbt && dbt test --target local --profiles-dir .
+	cd data_platform/dbt && DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" $(shell pwd)/venv/bin/dbt test --target local --profiles-dir .
+
+dbt-source-freshness:
+	cd data_platform/dbt && DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" $(shell pwd)/venv/bin/dbt source freshness --target local --profiles-dir .
+
+# Freshness + schema/historical tests
+dbt-validate: dbt-source-freshness dbt-test
+
+# AI/ML (lee de DuckDB decision_features)
+# Operaciones solo en event_time: datos 1h = trade cada 1h. Ver docs/AI_BACKTEST_PARAMS.md
+ai-train:
+	DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" venv/bin/python examples/ai_train.py
+
+ai-infer:
+	DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" venv/bin/python examples/ai_infer.py
+
+ai-backtest:
+	DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" venv/bin/python examples/ai_backtest.py
+
+ai-registry-list:
+	venv/bin/python examples/ai_registry_list.py
+
+ai-alloc:
+	DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" venv/bin/python examples/ai_alloc.py
+
+ai-strategy-explorer:
+	@echo "📊 Explorador de estrategias (script legacy)..."
+	DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" venv/bin/python examples/strategy_explorer.py
+
+ai-explorer-agent:
+	@echo "📊 Agente explorador (librería ai.explorer)..."
+	DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" venv/bin/python examples/ai_explorer_agent.py quick
 
 # Dagster orchestration
 install-dagster:

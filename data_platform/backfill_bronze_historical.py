@@ -1,8 +1,12 @@
 """
 Backfill historical data into bronze layer in format compatible with warehouse_raw_load.
 
-Writes to bronze/binance_historical/{market_snapshot,derivatives_snapshot,derivatives_flow}
-so that warehouse_raw_load + dbt can populate DuckDB tables with years of data.
+Todas las fuentes con misma ventana temporal (~3 años) para entrenar modelos:
+- bronze/binance_historical/{market_snapshot,derivatives_snapshot,derivatives_flow}
+- bronze/alternative_me_historical/fear_greed_index
+- bronze/bybit_historical/futures_snapshot
+- bronze/okx_historical/futures_snapshot
+- bronze/dexscreener_historical/dex_snapshot (proxy: CEX price, DEX sin histórico público)
 
 Usage:
     python -m data_platform.backfill_bronze_historical --days 1095 --interval 1h
@@ -227,6 +231,170 @@ def build_bronze_events(
     return market_events, deriv_events, flow_events
 
 
+def _fetch_fear_greed_historical(days: int) -> List[Dict]:
+    """Fetch historical Fear & Greed Index. Expande a hourly para alinear con market."""
+    resp = requests.get(
+        "https://api.alternative.me/fng/",
+        params={"limit": min(days, 365 * 5), "format": "json"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json().get("data", [])
+    events: List[Dict] = []
+    for item in data:
+        ts = int(item.get("timestamp", 0))
+        if ts <= 0:
+            continue
+        value = float(item.get("value", 0) or 0)
+        classification = str(item.get("value_classification", ""))
+        # Una fila por hora del día (alinear con market 1h)
+        base_dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+        for hour in range(24):
+            dt = base_dt.replace(hour=hour, minute=0, second=0, microsecond=0)
+            events.append({
+                "event_time": dt.isoformat(),
+                "value": value,
+                "classification": classification,
+            })
+    return events
+
+
+BYBIT_BASE = "https://api.bybit.com"
+OKX_BASE = "https://www.okx.com"
+
+
+def _fetch_bybit_klines(symbol: str, interval: str, start_ms: int, end_ms: int) -> List[List]:
+    """Bybit v5 kline: [startTime, open, high, low, close, volume, turnover]."""
+    interval_map = {"1m": "1", "1h": "60", "4h": "240", "1d": "D"}
+    bybit_int = interval_map.get(interval, "60")
+    out: List[List] = []
+    cursor = start_ms
+    while cursor < end_ms:
+        resp = requests.get(
+            f"{BYBIT_BASE}/v5/market/kline",
+            params={
+                "category": "linear",
+                "symbol": symbol,
+                "interval": bybit_int,
+                "start": cursor,
+                "end": end_ms,
+                "limit": 1000,
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        lst = data.get("result", {}).get("list", [])
+        if not lst:
+            break
+        out.extend(lst)
+        last_ts = int(lst[-1][0])
+        if last_ts <= cursor:
+            break
+        cursor = last_ts + 1
+    return out
+
+
+def _fetch_okx_klines(symbol: str, interval: str, start_ms: int, end_ms: int) -> List[List]:
+    """OKX v5 candles: instId=BTC-USDT-SWAP, bar=1H. Returns [ts, o, h, l, c, vol, volCcy]."""
+    bar_map = {"1m": "1m", "1h": "1H", "4h": "4H", "1d": "1D"}
+    inst_id = f"{symbol.replace('USDT', '')}-USDT-SWAP"
+    out: List[List] = []
+    cursor = start_ms
+    while cursor < end_ms:
+        resp = requests.get(
+            f"{OKX_BASE}/api/v5/market/candles",
+            params={
+                "instId": inst_id,
+                "bar": bar_map.get(interval, "1H"),
+                "after": str(cursor),
+                "limit": "300",
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        lst = data.get("data", [])
+        if not lst:
+            break
+        out.extend(lst)
+        last_ts = int(lst[-1][0])
+        if last_ts <= cursor:
+            break
+        cursor = last_ts + 1
+    return out
+
+
+def build_cross_exchange_historical(
+    symbol: str, interval: str, days: int
+) -> List[Dict]:
+    """Bybit + OKX historical klines -> cross_exchange format (last_price from close, bid/ask proxy)."""
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(days=days)
+    start_ms = _ms(start)
+    end_ms = _ms(now)
+
+    events: List[Dict] = []
+    bybit_klines = _fetch_bybit_klines(symbol, interval, start_ms, end_ms)
+    okx_klines = _fetch_okx_klines(symbol, interval, start_ms, end_ms)
+
+    bybit_by_ts: Dict[int, List] = {int(k[0]): k for k in bybit_klines}
+    okx_by_ts: Dict[int, List] = {int(k[0]): k for k in okx_klines}
+
+    for ts_ms in sorted(set(bybit_by_ts.keys()) | set(okx_by_ts.keys())):
+        event_time = _iso_from_ms(ts_ms)
+        # Bybit: [startTime, open, high, low, close, volume, turnover]
+        if ts_ms in bybit_by_ts:
+            k = bybit_by_ts[ts_ms]
+            close = float(k[4])
+            turnover = float(k[6]) if len(k) > 6 else 0.0
+            events.append({
+                "event_time": event_time,
+                "exchange": "bybit",
+                "symbol": symbol.upper(),
+                "last_price": close,
+                "bid_price": close,
+                "ask_price": close,
+                "quote_volume_24h": turnover,
+            })
+        # OKX: [ts, o, h, l, c, vol, volCcy]
+        if ts_ms in okx_by_ts:
+            k = okx_by_ts[ts_ms]
+            close = float(k[4])
+            vol_ccy = float(k[6]) if len(k) > 6 else 0.0
+            events.append({
+                "event_time": event_time,
+                "exchange": "okx",
+                "symbol": symbol.upper(),
+                "last_price": close,
+                "bid_price": close,
+                "ask_price": close,
+                "quote_volume_24h": vol_ccy,
+            })
+    return events
+
+
+def build_dex_historical_proxy(
+    symbol: str, spot_closes: Dict[int, float]
+) -> List[Dict]:
+    """DEX no tiene histórico público. Proxy: spot CEX como dex_price (loader usa price_usd)."""
+    events: List[Dict] = []
+    for ts_ms, spot_close in sorted(spot_closes.items()):
+        events.append({
+            "event_time": _iso_from_ms(ts_ms),
+            "symbol": symbol.upper(),
+            "chain_id": "ethereum",
+            "pair_address": f"proxy_{symbol.lower()}",
+            "dex_id": "proxy",
+            "price_usd": spot_close,
+            "liquidity_usd": 0.0,
+            "volume_24h_usd": 0.0,
+            "txns_buys_24h": 0,
+            "txns_sells_24h": 0,
+        })
+    return events
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Backfill historical data into bronze for DuckDB/dbt warehouse"
@@ -247,10 +415,28 @@ def main() -> None:
 
     cfg = DataPlatformConfig()
     writer = LakeWriter(cfg.lake_root)
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(days=args.days)
+    start_ms = _ms(start)
+    end_ms = _ms(now)
 
     total_market = 0
     total_deriv = 0
     total_flow = 0
+
+    # Fear & Greed histórico (misma ventana temporal que market)
+    try:
+        fg_events = _fetch_fear_greed_historical(args.days)
+        if fg_events:
+            writer.write_events_by_event_time(
+                "bronze", "alternative_me_historical", "fear_greed_index", fg_events
+            )
+            print(f"[backfill_bronze] fear_greed: {len(fg_events)} rows")
+    except Exception as exc:
+        print(f"[backfill_bronze][WARN] fear_greed: {exc}")
+
+    total_cross = 0
+    total_dex = 0
 
     for symbol in cfg.symbols:
         try:
@@ -261,29 +447,55 @@ def main() -> None:
                 print(f"[backfill_bronze][SKIP] {symbol}: no data")
                 continue
 
-            paths_m = writer.write_events_by_event_time(
+            writer.write_events_by_event_time(
                 "bronze", "binance_historical", "market_snapshot", market_ev
             )
-            paths_d = writer.write_events_by_event_time(
+            writer.write_events_by_event_time(
                 "bronze", "binance_historical", "derivatives_snapshot", deriv_ev
             )
-            paths_f = writer.write_events_by_event_time(
+            writer.write_events_by_event_time(
                 "bronze", "binance_historical", "derivatives_flow", flow_ev
             )
 
             total_market += len(market_ev)
             total_deriv += len(deriv_ev)
             total_flow += len(flow_ev)
+
+            # Cross-exchange (Bybit + OKX) histórico - misma temporalidad
+            cross_ev = build_cross_exchange_historical(
+                symbol=symbol, interval=args.interval, days=args.days
+            )
+            if cross_ev:
+                bybit_ev = [e for e in cross_ev if e["exchange"] == "bybit"]
+                okx_ev = [e for e in cross_ev if e["exchange"] == "okx"]
+                writer.write_events_by_event_time(
+                    "bronze", "bybit_historical", "futures_snapshot", bybit_ev
+                )
+                writer.write_events_by_event_time(
+                    "bronze", "okx_historical", "futures_snapshot", okx_ev
+                )
+                total_cross += len(cross_ev)
+
+            # DEX proxy: spot CEX como aproximación (DEX sin histórico público)
+            spot = _fetch_klines(SPOT_BASE, symbol, args.interval, start_ms, end_ms, market="spot")
+            spot_closes = {int(k[0]): float(k[4]) for k in spot}
+            dex_ev = build_dex_historical_proxy(symbol, spot_closes)
+            if dex_ev:
+                writer.write_events_by_event_time(
+                    "bronze", "dexscreener_historical", "dex_snapshot", dex_ev
+                )
+                total_dex += len(dex_ev)
+
             print(
-                f"[backfill_bronze] {symbol}: market={len(market_ev)}, "
-                f"derivatives={len(deriv_ev)}, flow={len(flow_ev)}"
+                f"[backfill_bronze] {symbol}: market={len(market_ev)}, deriv={len(deriv_ev)}, "
+                f"flow={len(flow_ev)}, cross={len(cross_ev)}, dex_proxy={len(dex_ev)}"
             )
         except Exception as exc:
             print(f"[backfill_bronze][WARN] {symbol}: {exc}")
 
     print(
-        f"[backfill_bronze] done. market_snapshot={total_market}, "
-        f"derivatives_snapshot={total_deriv}, derivatives_flow={total_flow}"
+        f"[backfill_bronze] done. market={total_market}, deriv={total_deriv}, "
+        f"flow={total_flow}, cross={total_cross}, dex={total_dex}, fear_greed=historical"
     )
     print(f"[backfill_bronze] lake_root={cfg.lake_root}")
     print("[backfill_bronze] Next: make warehouse-load dbt-run  (or run Dagster warehouse_raw_load)")

@@ -1,7 +1,7 @@
 
 
 with src as (
-    select * from "crypto"."silver"."slv_decision_features"
+    select * from "crypto"."main"."slv_decision_features"
 ),
 with_microstructure as (
     select

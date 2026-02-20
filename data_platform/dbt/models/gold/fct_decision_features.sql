@@ -1,4 +1,4 @@
-{{ config(materialized='table') }}
+{{ config(materialized='table', alias='decision_features') }}
 
 with src as (
     select * from {{ ref('slv_decision_features') }}

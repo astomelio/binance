@@ -141,8 +141,8 @@ def run_champion_challenger(
         print(f"Error loading 1h: {e}")
         import duckdb
         con = duckdb.connect("artifacts/warehouse/crypto.duckdb")
-        rows_dict = con.sql("select * from gold.fct_decision_features where fwd_return_4h is not null order by event_time, symbol").fetchall()
-        cols = [desc[0] for desc in con.sql("describe gold.fct_decision_features").fetchall()]
+        rows_dict = con.sql("select * from main.decision_features where fwd_return_4h is not null order by event_time, symbol").fetchall()
+        cols = [desc[0] for desc in con.sql("describe main.decision_features").fetchall()]
         rows_1h = [dict(zip(cols, r)) for r in rows_dict]
         print(f"Loaded {len(rows_1h)} rows from DuckDB")
     

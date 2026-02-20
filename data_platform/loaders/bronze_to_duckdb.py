@@ -37,6 +37,7 @@ def _load_market_snapshot_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
     patterns = [
         f"{cfg.lake_root}/bronze/binance_local_api/market_snapshot/**/part-*.jsonl",
         f"{cfg.lake_root}/bronze/binance_historical/market_snapshot/**/part-*.jsonl",
+        f"{cfg.lake_root}/bronze/binance_vision/market_snapshot/**/part-*.jsonl",
     ]
     for pattern in patterns:
         for event in _iter_jsonl(pattern):
@@ -67,6 +68,7 @@ def _load_derivatives_snapshot_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
     patterns = [
         f"{cfg.lake_root}/bronze/binance_public/derivatives_snapshot/**/part-*.jsonl",
         f"{cfg.lake_root}/bronze/binance_historical/derivatives_snapshot/**/part-*.jsonl",
+        f"{cfg.lake_root}/bronze/binance_vision/derivatives_snapshot/**/part-*.jsonl",
     ]
     for pattern in patterns:
         for event in _iter_jsonl(pattern):
@@ -96,6 +98,7 @@ def _load_derivatives_flow_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
     patterns = [
         f"{cfg.lake_root}/bronze/binance_public/derivatives_flow/**/part-*.jsonl",
         f"{cfg.lake_root}/bronze/binance_historical/derivatives_flow/**/part-*.jsonl",
+        f"{cfg.lake_root}/bronze/binance_vision/derivatives_flow/**/part-*.jsonl",
     ]
     for pattern in patterns:
         for event in _iter_jsonl(pattern):
@@ -123,6 +126,8 @@ def _load_cross_exchange_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
     patterns = [
         f"{cfg.lake_root}/bronze/bybit_public/futures_snapshot/**/part-*.jsonl",
         f"{cfg.lake_root}/bronze/okx_public/futures_snapshot/**/part-*.jsonl",
+        f"{cfg.lake_root}/bronze/bybit_historical/futures_snapshot/**/part-*.jsonl",
+        f"{cfg.lake_root}/bronze/okx_historical/futures_snapshot/**/part-*.jsonl",
     ]
     for pattern in patterns:
         for event in _iter_jsonl(pattern):
@@ -149,29 +154,34 @@ def _load_cross_exchange_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
 def _load_dex_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
     rows: List[Dict] = []
     seen = set()
-    for event in _iter_jsonl(f"{cfg.lake_root}/bronze/dexscreener/dex_snapshot/**/part-*.jsonl"):
-        symbol = str(event.get("symbol", "")).upper()
-        pair = str(event.get("pair_address", "")).lower()
-        key = (event.get("event_time"), symbol, pair)
-        if key in seen:
-            continue
-        seen.add(key)
-        buys = float(event.get("txns_buys_24h", 0) or 0)
-        sells = float(event.get("txns_sells_24h", 0) or 0)
-        total = buys + sells
-        rows.append(
-            {
-                "event_time": event.get("event_time"),
-                "symbol": symbol,
-                "chain_id": str(event.get("chain_id", "")).lower(),
-                "pair_address": pair,
-                "dex_id": str(event.get("dex_id", "")).lower(),
-                "dex_price_usd": float(event.get("price_usd", 0) or 0),
-                "dex_liquidity_usd": float(event.get("liquidity_usd", 0) or 0),
-                "dex_volume_24h_usd": float(event.get("volume_24h_usd", 0) or 0),
-                "dex_txn_imbalance_24h": ((buys - sells) / total) if total > 0 else 0.0,
-            }
-        )
+    patterns = [
+        f"{cfg.lake_root}/bronze/dexscreener/dex_snapshot/**/part-*.jsonl",
+        f"{cfg.lake_root}/bronze/dexscreener_historical/dex_snapshot/**/part-*.jsonl",
+    ]
+    for pattern in patterns:
+        for event in _iter_jsonl(pattern):
+            symbol = str(event.get("symbol", "")).upper()
+            pair = str(event.get("pair_address", "")).lower()
+            key = (event.get("event_time"), symbol, pair)
+            if key in seen:
+                continue
+            seen.add(key)
+            buys = float(event.get("txns_buys_24h", 0) or 0)
+            sells = float(event.get("txns_sells_24h", 0) or 0)
+            total = buys + sells
+            rows.append(
+                {
+                    "event_time": event.get("event_time"),
+                    "symbol": symbol,
+                    "chain_id": str(event.get("chain_id", "")).lower(),
+                    "pair_address": pair,
+                    "dex_id": str(event.get("dex_id", "")).lower(),
+                    "dex_price_usd": float(event.get("price_usd", 0) or 0),
+                    "dex_liquidity_usd": float(event.get("liquidity_usd", 0) or 0),
+                    "dex_volume_24h_usd": float(event.get("volume_24h_usd", 0) or 0),
+                    "dex_txn_imbalance_24h": ((buys - sells) / total) if total > 0 else 0.0,
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -192,14 +202,19 @@ def _load_global_market_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
 
 def _load_fear_greed_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
     rows: List[Dict] = []
-    for event in _iter_jsonl(f"{cfg.lake_root}/bronze/alternative_me/fear_greed_index/**/part-*.jsonl"):
-        rows.append(
-            {
-                "event_time": event.get("event_time"),
-                "fear_greed_value": float(event.get("value", 0) or 0),
-                "fear_greed_classification": str(event.get("classification", "")),
-            }
-        )
+    patterns = [
+        f"{cfg.lake_root}/bronze/alternative_me/fear_greed_index/**/part-*.jsonl",
+        f"{cfg.lake_root}/bronze/alternative_me_historical/fear_greed_index/**/part-*.jsonl",
+    ]
+    for pattern in patterns:
+        for event in _iter_jsonl(pattern):
+            rows.append(
+                {
+                    "event_time": event.get("event_time"),
+                    "fear_greed_value": float(event.get("value", 0) or 0),
+                    "fear_greed_classification": str(event.get("classification", "")),
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -246,23 +261,33 @@ _EMPTY_TABLE_DDL: Dict[str, str] = {
 }
 
 
-def _replace_table(con: duckdb.DuckDBPyConnection, table_name: str, df: pd.DataFrame) -> None:
+def _replace_table(
+    con: duckdb.DuckDBPyConnection, schema: str, table_name: str, df: pd.DataFrame
+) -> None:
     if df.empty:
         ddl = _EMPTY_TABLE_DDL.get(table_name, "event_time VARCHAR")
-        con.execute(f"create or replace table raw.{table_name} ({ddl})")
+        con.execute(f"create schema if not exists {schema}")
+        con.execute(f"create or replace table {schema}.{table_name} ({ddl})")
         return
+    con.execute(f"create schema if not exists {schema}")
     view_name = f"tmp_{table_name}"
     con.register(view_name, df)
-    con.execute(f"create or replace table raw.{table_name} as select * from {view_name}")
+    con.execute(f"create or replace table {schema}.{table_name} as select * from {view_name}")
     con.unregister(view_name)
 
 
-def load_bronze_to_duckdb(cfg: DataPlatformConfig, db_path: str) -> Dict[str, int]:
+def load_bronze_to_duckdb(
+    cfg: DataPlatformConfig,
+    db_path: str,
+    *,
+    schema: str = "main",
+    tables_only: List[str] | None = None,
+) -> Dict[str, int]:
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(db_path)
-    con.execute("create schema if not exists raw")
+    # All tables in main schema (DuckDB default)
 
-    datasets = {
+    all_datasets = {
         "market_snapshot_raw": _load_market_snapshot_raw(cfg),
         "derivatives_snapshot_raw": _load_derivatives_snapshot_raw(cfg),
         "derivatives_flow_raw": _load_derivatives_flow_raw(cfg),
@@ -273,9 +298,14 @@ def load_bronze_to_duckdb(cfg: DataPlatformConfig, db_path: str) -> Dict[str, in
         "macro_rates_raw": _load_macro_rates_raw(cfg),
         "fed_calendar_raw": _load_fed_calendar_raw(cfg),
     }
+    datasets = (
+        {k: v for k, v in all_datasets.items() if k in tables_only}
+        if tables_only
+        else all_datasets
+    )
     counts: Dict[str, int] = {}
     for table_name, df in datasets.items():
-        _replace_table(con, table_name, df)
+        _replace_table(con, schema, table_name, df)
         counts[table_name] = int(df.shape[0])
     con.close()
     return counts

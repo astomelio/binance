@@ -18,14 +18,12 @@ clean-targets:
 models:
   crypto_trading_lakehouse:
     +materialized: table
+    +schema: main
     bronze:
-      +schema: bronze
       +tags: ["bronze"]
     silver:
-      +schema: silver
       +tags: ["silver"]
     gold:
-      +schema: gold
       +tags: ["gold"]
 
 seeds:

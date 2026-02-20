@@ -56,7 +56,10 @@ dagster asset materialize \
 - `crypto_lake_high_every_5_min`: solo ingestión bronze high
 - `crypto_lake_medium_every_30_min`: solo ingestión bronze medium
 - `crypto_lake_low_every_4_hours`: solo ingestión bronze low
-- `crypto_lake_full_every_4_hours`: ejecuta high+medium+low + `warehouse_raw_load` + `warehouse_dbt_build`
+- `crypto_lake_full_every_4_hours`: ejecuta high+medium+low + warehouse + dbt (cada 4h)
+- `crypto_lake_full_every_hour`: mismo job, cada hora (mejor temporalidad)
+
+**Temporalidad:** Cuando corre `crypto_lake_full`, todos los collectors (high+medium+low) se ejecutan en la misma ventana → mismo `event_time` → todas las tablas raw quedan alineadas. Luego `warehouse_raw_load` carga todo y `warehouse_dbt_build` construye decision_features.
 
 ## Integración dbt
 
@@ -73,4 +76,9 @@ dagster asset materialize \
 DuckDB local queda en:
 
 - `/Users/joaquincano/binance/artifacts/warehouse/crypto.duckdb`
+
+## Variables de entorno (Dagster)
+
+- `LAKE_ROOT`: ruta del data lake (ej. `$(pwd)/data_lake` o `/Users/joaquincano/data/binance_lake`)
+- `DBT_DUCKDB_PATH`: ruta del DuckDB
 

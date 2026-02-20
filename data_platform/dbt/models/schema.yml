@@ -2,46 +2,71 @@ version: 2
 
 sources:
   - name: raw
-    schema: raw
+    schema: main
+    description: "Bronze raw tables loaded from lake (live + historical backfill)"
+    freshness:
+      warn_after: {count: 2, period: hour}
+      error_after: {count: 6, period: hour}
+    loaded_at_field: event_time
     tables:
+      # High-frequency (hourly): Binance market, derivatives, flow
       - name: market_snapshot_raw
+        description: "Spot + futures from Binance (live + historical)"
       - name: derivatives_snapshot_raw
+        description: "Futures snapshot (live + historical)"
       - name: derivatives_flow_raw
+        description: "Long/short ratio, buy/sell (live + historical)"
+      # Cross-exchange + DEX
       - name: cross_exchange_snapshot_raw
+        description: "Bybit/OKX prices (live + historical)"
       - name: dex_snapshot_raw
+        description: "DEX proxy (live + historical)"
+      # Lower-frequency (daily or less)
       - name: global_market_raw
+        freshness:
+          warn_after: {count: 24, period: hour}
+          error_after: {count: 48, period: hour}
       - name: fear_greed_raw
+        freshness:
+          warn_after: {count: 24, period: hour}
+          error_after: {count: 48, period: hour}
       - name: macro_rates_raw
+        freshness:
+          warn_after: {count: 168, period: hour}
+          error_after: {count: 336, period: hour}
       - name: fed_calendar_raw
+        freshness:
+          warn_after: {count: 168, period: hour}
+          error_after: {count: 336, period: hour}
 
 models:
   - name: br_market_snapshot
     columns:
       - name: event_time
-        tests:
+        data_tests:
           - not_null
       - name: symbol
-        tests:
+        data_tests:
           - not_null
   - name: slv_decision_features
     columns:
       - name: event_time
-        tests:
+        data_tests:
           - not_null
       - name: symbol
-        tests:
+        data_tests:
           - not_null
   - name: fct_decision_features
     columns:
       - name: feature_id
-        tests:
+        data_tests:
           - not_null
           - unique
       - name: symbol
-        tests:
+        data_tests:
           - not_null
       - name: event_time
-        tests:
+        data_tests:
           - not_null
       - name: alpha_score
         description: "Composite alpha score blending microstructure, momentum, session, liquidity, cross-exchange, and DEX signals"

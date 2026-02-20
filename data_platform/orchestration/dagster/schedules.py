@@ -29,3 +29,10 @@ crypto_lake_full_schedule = ScheduleDefinition(
     job=crypto_lake_full_job,
 )
 
+# Más frecuente: cada hora, todas las tablas con misma temporalidad
+crypto_lake_full_hourly_schedule = ScheduleDefinition(
+    name="crypto_lake_full_every_hour",
+    cron_schedule="30 * * * *",
+    job=crypto_lake_full_job,
+)
+

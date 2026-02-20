@@ -8,7 +8,7 @@ with market as (
         cast(futures_last_price as double) as futures_last_price,
         cast(spot_volume as double) as spot_volume,
         cast(futures_volume as double) as futures_volume
-    from "crypto"."raw"."market_snapshot_raw"
+    from "crypto"."main"."market_snapshot_raw"
 ),
 derivatives as (
     select
@@ -20,7 +20,7 @@ derivatives as (
         cast(open_interest as double) as open_interest,
         cast(price_change_percent_24h as double) as price_change_percent_24h,
         cast(quote_volume_24h as double) as quote_volume_24h
-    from "crypto"."raw"."derivatives_snapshot_raw"
+    from "crypto"."main"."derivatives_snapshot_raw"
 ),
 flow as (
     select
@@ -28,7 +28,7 @@ flow as (
         symbol,
         cast(long_short_account_ratio as double) as long_short_account_ratio,
         cast(buy_sell_ratio as double) as buy_sell_ratio
-    from "crypto"."raw"."derivatives_flow_raw"
+    from "crypto"."main"."derivatives_flow_raw"
 ),
 cross_ex as (
     select
@@ -44,7 +44,7 @@ cross_ex as (
         ) as cross_exchange_bid_ask_bps_mean,
         max(case when lower(exchange) = 'bybit' then cast(last_price as double) end) as bybit_last_price,
         max(case when lower(exchange) = 'okx' then cast(last_price as double) end) as okx_last_price
-    from "crypto"."raw"."cross_exchange_snapshot_raw"
+    from "crypto"."main"."cross_exchange_snapshot_raw"
     group by 1, 2
 ),
 dex as (
@@ -55,7 +55,7 @@ dex as (
         cast(dex_liquidity_usd as double) as dex_liquidity_usd,
         cast(dex_volume_24h_usd as double) as dex_volume_24h_usd,
         cast(dex_txn_imbalance_24h as double) as dex_txn_imbalance_24h
-    from "crypto"."raw"."dex_snapshot_raw"
+    from "crypto"."main"."dex_snapshot_raw"
 )
 select
     m.event_time,

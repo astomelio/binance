@@ -16,7 +16,13 @@ from .assets import (
     warehouse_raw_load,
 )
 from .jobs import crypto_lake_full_job, crypto_lake_high_job, crypto_lake_low_job, crypto_lake_medium_job
-from .schedules import crypto_lake_full_schedule, crypto_lake_high_schedule, crypto_lake_low_schedule, crypto_lake_medium_schedule
+from .schedules import (
+    crypto_lake_full_hourly_schedule,
+    crypto_lake_full_schedule,
+    crypto_lake_high_schedule,
+    crypto_lake_low_schedule,
+    crypto_lake_medium_schedule,
+)
 
 base_assets = [
     bronze_high_ingestion,
@@ -52,7 +58,13 @@ except Exception:
 defs = Definitions(
     assets=base_assets,
     jobs=[crypto_lake_high_job, crypto_lake_medium_job, crypto_lake_low_job, crypto_lake_full_job],
-    schedules=[crypto_lake_high_schedule, crypto_lake_medium_schedule, crypto_lake_low_schedule, crypto_lake_full_schedule],
+    schedules=[
+        crypto_lake_high_schedule,
+        crypto_lake_medium_schedule,
+        crypto_lake_low_schedule,
+        crypto_lake_full_schedule,
+        crypto_lake_full_hourly_schedule,
+    ],
     resources=resources,
 )
 

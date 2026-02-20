@@ -4,13 +4,13 @@
     
 
     create  table
-      "crypto"."gold"."fct_decision_features__dbt_tmp"
+      "crypto"."main"."decision_features__dbt_tmp"
   
     as (
       
 
 with src as (
-    select * from "crypto"."silver"."slv_decision_features"
+    select * from "crypto"."main"."slv_decision_features"
 ),
 with_microstructure as (
     select

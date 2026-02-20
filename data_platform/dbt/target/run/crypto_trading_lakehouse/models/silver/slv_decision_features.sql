@@ -4,16 +4,16 @@
     
 
     create  table
-      "crypto"."silver"."slv_decision_features__dbt_tmp"
+      "crypto"."main"."slv_decision_features__dbt_tmp"
   
     as (
       
 
 with market as (
-    select * from "crypto"."bronze"."br_market_snapshot"
+    select * from "crypto"."main"."br_market_snapshot"
 ),
 macro as (
-    select * from "crypto"."bronze"."br_macro_context"
+    select * from "crypto"."main"."br_macro_context"
 ),
 joined as (
     select
