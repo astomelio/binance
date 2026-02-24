@@ -2,7 +2,7 @@
 """
 Backtest con vectores de asignación. Lee de DuckDB.
 allocation[symbol] = 0 (nada), 0.2 (20% long), -0.2 (20% short).
-Operaciones solo en cada event_time. Ver docs/AI_BACKTEST_PARAMS.md
+Operaciones solo en cada event_time. Ver README.md
 """
 import argparse
 from ai.backtest.runner import run_backtest

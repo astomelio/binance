@@ -218,7 +218,7 @@ dbt-source-freshness:
 dbt-validate: dbt-source-freshness dbt-test
 
 # AI/ML (lee de DuckDB decision_features)
-# Operaciones solo en event_time: datos 1h = trade cada 1h. Ver docs/AI_BACKTEST_PARAMS.md
+# Operaciones solo en event_time: datos 1h = trade cada 1h
 ai-train:
 	DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" venv/bin/python examples/ai_train.py
 
