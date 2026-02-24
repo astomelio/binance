@@ -21,7 +21,6 @@ def _grid_params(strategy: StrategyDef, param_overrides: dict[str, list] | None 
     combos = []
     for combo in itertools.product(*values):
         params = dict(zip(keys, combo))
-        # Merge defaults for any missing
         for k, v in strategy.default_params.items():
             if k not in params:
                 params[k] = v
@@ -35,7 +34,7 @@ def run_single(
     params: dict[str, Any],
     horizon: str = "4h",
     fee_percent: float = 0.04,
-    slippage_percent: float = 0.0,
+    slippage_percent: float = 0.02,
     min_quote_volume_24h: float | None = None,
     symbols: list[str] | None = None,
 ) -> ExperimentResult | None:
@@ -62,6 +61,10 @@ def run_single(
         fees_percent=r.total_fees_percent,
         slippage_percent=r.total_slippage_percent,
         trades_count=r.trades_count,
+        max_drawdown_percent=r.max_drawdown_percent,
+        sharpe_ratio=r.sharpe_ratio,
+        win_rate_percent=r.win_rate_percent,
+        periods=r.periods,
         by_symbol=r.by_symbol,
     )
 
@@ -71,7 +74,7 @@ def run_grid(
     strategy_id: str,
     horizon: str = "4h",
     fee_percent: float = 0.04,
-    slippage_percent: float = 0.0,
+    slippage_percent: float = 0.02,
     min_quote_volume_24h: float | None = None,
     symbols: list[str] | None = None,
     param_overrides: dict[str, list] | None = None,
@@ -83,7 +86,6 @@ def run_grid(
         return []
     combos = _grid_params(strategy, param_overrides)
     if len(combos) > max_combos:
-        # Sample evenly
         step = len(combos) // max_combos
         combos = [combos[i] for i in range(0, len(combos), max(1, step))][:max_combos]
     results = []
@@ -104,7 +106,7 @@ def run_all_strategies(
     strategy_ids: list[str] | None = None,
     horizon: str = "4h",
     fee_percent: float = 0.04,
-    slippage_percent: float = 0.0,
+    slippage_percent: float = 0.02,
     min_quote_volume_24h: float | None = None,
     symbols: list[str] | None = None,
     use_default_params: bool = True,

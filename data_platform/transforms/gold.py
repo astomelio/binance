@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 
 def _parse_iso_date(value: str) -> datetime | None:
@@ -61,13 +61,29 @@ def _alpha_score(basis_bps: float, funding_rate_8h: float, price_change_percent_
     return round((0.45 * basis_component) + (0.35 * funding_component) + (0.20 * momentum_component), 4)
 
 
-def _pct_change(series: List[float], steps_back: int) -> float:
+def _pct_change_timed(
+    series: List[Tuple[str, float]],
+    steps_back: int,
+    max_gap_hours: float = 6.0,
+) -> float:
+    """Momentum that validates temporal continuity.
+
+    Returns 0.0 when the time gap between the reference point and the
+    current observation exceeds *max_gap_hours*, preventing stale
+    lookbacks from leaking into the score.
+    """
     if len(series) <= steps_back:
         return 0.0
-    prev = series[-(steps_back + 1)]
-    curr = series[-1]
+    ts_prev, prev = series[-(steps_back + 1)]
+    ts_curr, curr = series[-1]
     if prev == 0:
         return 0.0
+    dt_prev = _parse_iso_date(ts_prev)
+    dt_curr = _parse_iso_date(ts_curr)
+    if dt_prev and dt_curr:
+        gap_h = abs((dt_curr - dt_prev).total_seconds()) / 3600.0
+        if gap_h > max_gap_hours * steps_back:
+            return 0.0
     return ((curr - prev) / prev) * 100.0
 
 
@@ -194,17 +210,18 @@ def build_decision_features(
     for row in dex_rows:
         latest_dex_by_symbol[str(row.get("symbol"))] = row
 
-    price_history_by_symbol: Dict[str, List[float]] = {}
+    price_history_by_symbol: Dict[str, List[Tuple[str, float]]] = {}
     out: List[Dict] = []
     for row in market_rows:
         symbol = row.get("symbol")
         spot = row.get("spot_last_price", 0.0)
         fut = row.get("futures_last_price", 0.0)
+        et = row.get("event_time", "")
         if symbol not in price_history_by_symbol:
             price_history_by_symbol[symbol] = []
-        price_history_by_symbol[symbol].append(fut)
-        momentum_3 = _pct_change(price_history_by_symbol[symbol], 3)
-        momentum_12 = _pct_change(price_history_by_symbol[symbol], 12)
+        price_history_by_symbol[symbol].append((et, fut))
+        momentum_3 = _pct_change_timed(price_history_by_symbol[symbol], 3)
+        momentum_12 = _pct_change_timed(price_history_by_symbol[symbol], 12)
         momentum_score = _momentum_score(momentum_3, momentum_12)
         session_band = _session_band(row.get("event_time", ""))
         session_overlap_score = _session_overlap_score(session_band)
@@ -261,14 +278,15 @@ def build_decision_features(
             dex_cex_basis_bps=dex_cex_basis_bps,
             dex_txn_imbalance_24h=float(dex.get("dex_txn_imbalance_24h", 0.0) or 0.0),
         )
-        # Composite score mixes reversion pressure with short/medium momentum windows.
+        # Composite: reversion + momentum + market-driven signals.
+        # session_overlap is time-deterministic (not alpha), kept at minimal weight.
         composite_alpha_score = round(
-            (0.45 * microstructure_score)
+            (0.40 * microstructure_score)
             + (0.25 * momentum_score)
-            + (0.10 * session_overlap_score)
-            + (0.10 * liquidity_event_score)
-            + (0.05 * cross_exchange_score)
-            + (0.05 * dex_alpha_score),
+            + (0.03 * session_overlap_score)
+            + (0.12 * liquidity_event_score)
+            + (0.10 * cross_exchange_score)
+            + (0.10 * dex_alpha_score),
             4,
         )
 

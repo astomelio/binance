@@ -1,19 +1,19 @@
 """
 Backtest con vectores de asignación.
 En cada event_time: allocation[symbol] = 0 (nada), 0.2 (20% long), -0.2 (20% short).
-Retorno = sum(alloc[s] * fwd_return[s]). Fees sobre cambios de posición.
+Retorno = sum(alloc[s] * fwd_return[s]). Fees sobre notional de cambio de posición.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, field
 from typing import Callable
 
 from ai.allocation.strategies import compute_allocations
 from ai.allocation.types import AllocationVector
 
 
-# Tipo: por cada event_time, vector de asignación por símbolo (normalizado, ej. -1 a 1)
 AllocationsByTime = dict[str, dict[str, float]]
 
 
@@ -24,15 +24,32 @@ class AllocationBacktestResult:
     total_fees_percent: float
     total_slippage_percent: float
     trades_count: int
+    max_drawdown_percent: float
+    sharpe_ratio: float
+    win_rate_percent: float
+    periods: int
     by_symbol: dict[str, float]
     alloc_history: list[tuple[str, AllocationVector]]
+    equity_curve: list[float] = field(default_factory=list)
+
+
+def _compute_sharpe(period_returns: list[float]) -> float:
+    """Sharpe-like ratio from per-period returns (no annualization)."""
+    if len(period_returns) < 2:
+        return 0.0
+    avg = sum(period_returns) / len(period_returns)
+    var = sum((r - avg) ** 2 for r in period_returns) / len(period_returns)
+    std = math.sqrt(var)
+    if std < 1e-9:
+        return 0.0
+    return avg / std
 
 
 def run_allocation_backtest(
     rows: list[dict],
     horizon: str = "4h",
     fee_percent: float = 0.04,
-    slippage_percent: float = 0.0,
+    slippage_percent: float = 0.02,
     min_quote_volume_24h: float | None = None,
     compute_fn: Callable[[dict[str, dict], str], AllocationVector] | None = None,
     symbols: list[str] | None = None,
@@ -40,8 +57,8 @@ def run_allocation_backtest(
     """
     rows: decision_features, cada fila = (event_time, symbol, alpha_score, fwd_return_*, ...)
     horizon: 1h, 4h, 24h -> usa fwd_return_1h, fwd_return_4h, fwd_return_24h
-    fee_percent: round-trip fee por trade (ej 0.04)
-    slippage_percent: coste estimado por cambio de posición, ej 0.02 (realismo ejecución)
+    fee_percent: fee por lado sobre notional (ej 0.04 = 4bps)
+    slippage_percent: coste estimado por lado sobre notional, ej 0.02
     min_quote_volume_24h: excluir símbolos con quote_volume_24h < este valor (USD)
     compute_fn: si None, usa compute_allocations por defecto
     """
@@ -50,7 +67,6 @@ def run_allocation_backtest(
     )
     compute_fn = compute_fn or (lambda f, _: compute_allocations(f))
 
-    # Agrupar por event_time (opcional: filtrar por liquidez)
     by_time: dict[str, dict[str, dict]] = {}
     for r in rows:
         ts = r.get("event_time", "")
@@ -80,6 +96,10 @@ def run_allocation_backtest(
             total_fees_percent=0.0,
             total_slippage_percent=0.0,
             trades_count=0,
+            max_drawdown_percent=0.0,
+            sharpe_ratio=0.0,
+            win_rate_percent=0.0,
+            periods=0,
             by_symbol={},
             alloc_history=[],
         )
@@ -92,39 +112,75 @@ def run_allocation_backtest(
     by_symbol: dict[str, float] = {}
     alloc_history: list[tuple[str, AllocationVector]] = []
 
+    equity = 1.0
+    peak = 1.0
+    max_dd = 0.0
+    period_returns: list[float] = []
+    winning_periods = 0
+    equity_curve: list[float] = [1.0]
+
     for ts in event_times:
         features = by_time[ts]
         alloc = compute_fn(features, ts)
         alloc_history.append((ts, dict(alloc)))
 
-        # Fee y slippage por cambio de posición
+        # Fees on notional change: round-trip fee * |delta| for each symbol.
+        # In real trading, fee applies to the notional of each leg.
+        period_fee = 0.0
+        period_slip = 0.0
         for s in set(prev_alloc) | set(alloc):
             prev_a = prev_alloc.get(s, 0.0)
             curr_a = alloc.get(s, 0.0)
             delta = abs(curr_a - prev_a)
             if delta > 1e-6:
                 trades_count += 1
-                total_fees += delta * fee_percent
-                total_slippage += delta * slippage_percent
+                # Each allocation change requires closing old + opening new.
+                # Fee on close: |prev_a| * fee_percent (if closing/reducing)
+                # Fee on open: |curr_a| * fee_percent (if opening/increasing)
+                # Net: fee on the larger of the two legs (round-trip on overlap)
+                close_leg = abs(prev_a) if abs(curr_a) < abs(prev_a) or (prev_a * curr_a < 0) else delta
+                open_leg = abs(curr_a) if abs(prev_a) < abs(curr_a) or (prev_a * curr_a < 0) else delta
+                if prev_a * curr_a < 0:
+                    # Signal flip: close full old + open full new
+                    period_fee += (abs(prev_a) + abs(curr_a)) * fee_percent
+                    period_slip += (abs(prev_a) + abs(curr_a)) * slippage_percent
+                else:
+                    # Same direction: fee only on the delta
+                    period_fee += delta * fee_percent
+                    period_slip += delta * slippage_percent
 
-        # Retorno: alloc * fwd_return (del período anterior al actual)
-        # En t tenemos fwd_return = retorno de t a t+1. Usamos alloc de t-1 para el retorno t-1->t.
-        # Simplificación: usamos alloc de t y fwd_return de t = retorno t->t+1.
-        # Así el retorno del período actual se materializa en el siguiente step.
-        # Mejor: en t, tenemos alloc_t y fwd_return en la fila = ret de t a t+1.
-        # Portfolio return de t a t+1 = sum(alloc_t[s] * fwd_return[s])
+        total_fees += period_fee
+        total_slippage += period_slip
+
+        period_ret = 0.0
         for s, feats in features.items():
-            if s not in alloc:
+            if s not in alloc or abs(alloc[s]) < 1e-9:
                 continue
             fwd_val = feats.get(label_col)
             if fwd_val is None:
                 continue
             fwd = float(fwd_val)
             ret = alloc[s] * (fwd / 100.0)
+            period_ret += ret
             total_return += ret
             by_symbol[s] = by_symbol.get(s, 0.0) + ret
 
+        net_period = period_ret - period_fee - period_slip
+        period_returns.append(net_period)
+        if net_period > 0:
+            winning_periods += 1
+
+        equity *= 1 + net_period
+        if equity > peak:
+            peak = equity
+        dd = ((peak - equity) / peak) * 100 if peak > 0 else 0.0
+        max_dd = max(max_dd, dd)
+        equity_curve.append(equity)
+
         prev_alloc = alloc
+
+    n_periods = len(period_returns)
+    win_rate = (winning_periods / n_periods * 100) if n_periods > 0 else 0.0
 
     return AllocationBacktestResult(
         total_return_percent=total_return,
@@ -132,8 +188,13 @@ def run_allocation_backtest(
         total_fees_percent=total_fees,
         total_slippage_percent=total_slippage,
         trades_count=trades_count,
+        max_drawdown_percent=max_dd,
+        sharpe_ratio=_compute_sharpe(period_returns),
+        win_rate_percent=win_rate,
+        periods=n_periods,
         by_symbol=by_symbol,
         alloc_history=alloc_history,
+        equity_curve=equity_curve,
     )
 
 
@@ -150,7 +211,6 @@ def run_backtest_from_orders(
     Tú pasas: vector de monedas (vía rows/symbols) y por cada barra el vector de
     asignaciones normalizadas. El backtest aplica esas asignaciones, cobra fees
     por cambio de posición y devuelve retorno neto y trades.
-    Replicable en cualquier experimento: mismo input -> mismo output.
     """
     label_col = {"1h": "fwd_return_1h", "4h": "fwd_return_4h", "24h": "fwd_return_24h"}.get(
         horizon, "fwd_return_1h"
@@ -175,6 +235,10 @@ def run_backtest_from_orders(
             total_fees_percent=0.0,
             total_slippage_percent=0.0,
             trades_count=0,
+            max_drawdown_percent=0.0,
+            sharpe_ratio=0.0,
+            win_rate_percent=0.0,
+            periods=0,
             by_symbol={},
             alloc_history=[],
         )
@@ -187,34 +251,64 @@ def run_backtest_from_orders(
     by_symbol: dict[str, float] = {}
     alloc_history: list[tuple[str, AllocationVector]] = []
 
+    equity = 1.0
+    peak = 1.0
+    max_dd = 0.0
+    period_returns: list[float] = []
+    winning_periods = 0
+
     for ts in event_times:
         features = by_time[ts]
-        # Tu vector: asignación por símbolo en esta barra (si no pasas, 0)
         raw = allocations_by_ts.get(ts, {})
         alloc = {s: float(raw.get(s, 0.0) or 0.0) for s in features}
         alloc_history.append((ts, dict(alloc)))
 
+        period_fee = 0.0
+        period_slip = 0.0
         for s in set(prev_alloc) | set(alloc):
             prev_a = prev_alloc.get(s, 0.0)
             curr_a = alloc.get(s, 0.0)
             delta = abs(curr_a - prev_a)
             if delta > 1e-6:
                 trades_count += 1
-                total_fees += delta * fee_percent
-                total_slippage += delta * slippage_percent
+                if prev_a * curr_a < 0:
+                    period_fee += (abs(prev_a) + abs(curr_a)) * fee_percent
+                    period_slip += (abs(prev_a) + abs(curr_a)) * slippage_percent
+                else:
+                    period_fee += delta * fee_percent
+                    period_slip += delta * slippage_percent
 
+        total_fees += period_fee
+        total_slippage += period_slip
+
+        period_ret = 0.0
         for s, feats in features.items():
-            if s not in alloc:
+            if s not in alloc or abs(alloc[s]) < 1e-9:
                 continue
             fwd_val = feats.get(label_col)
             if fwd_val is None:
                 continue
             fwd = float(fwd_val)
             ret = alloc[s] * (fwd / 100.0)
+            period_ret += ret
             total_return += ret
             by_symbol[s] = by_symbol.get(s, 0.0) + ret
 
+        net_period = period_ret - period_fee - period_slip
+        period_returns.append(net_period)
+        if net_period > 0:
+            winning_periods += 1
+
+        equity *= 1 + net_period
+        if equity > peak:
+            peak = equity
+        dd = ((peak - equity) / peak) * 100 if peak > 0 else 0.0
+        max_dd = max(max_dd, dd)
+
         prev_alloc = alloc
+
+    n_periods = len(period_returns)
+    win_rate = (winning_periods / n_periods * 100) if n_periods > 0 else 0.0
 
     return AllocationBacktestResult(
         total_return_percent=total_return,
@@ -222,6 +316,10 @@ def run_backtest_from_orders(
         total_fees_percent=total_fees,
         total_slippage_percent=total_slippage,
         trades_count=trades_count,
+        max_drawdown_percent=max_dd,
+        sharpe_ratio=_compute_sharpe(period_returns),
+        win_rate_percent=win_rate,
+        periods=n_periods,
         by_symbol=by_symbol,
         alloc_history=alloc_history,
     )

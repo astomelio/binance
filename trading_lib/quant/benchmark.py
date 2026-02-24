@@ -117,19 +117,40 @@ def _train_model(model_name: str, params: Dict):
     raise ValueError(f"Unknown model: {model_name}")
 
 
-def _simulate_from_prob(prob_up: np.ndarray, y_return: np.ndarray, prob_threshold: float, fee_percent: float) -> Tuple[int, float, float, float]:
-    # Long when p_up is strong, short when p_down is strong.
+def _simulate_from_prob(
+    prob_up: np.ndarray,
+    y_return: np.ndarray,
+    prob_threshold: float,
+    fee_percent: float,
+    min_allocation: float = 0.1,
+    max_allocation: float = 0.4,
+    slippage_percent: float = 0.02,
+) -> Tuple[int, float, float, float]:
+    """Simulate with allocation sizing matching production behavior.
+
+    Instead of signal={-1,0,1}, allocations scale with conviction
+    between min_allocation and max_allocation.
+    """
     longs = prob_up >= prob_threshold
     shorts = prob_up <= (1.0 - prob_threshold)
     active = longs | shorts
     if not np.any(active):
         return 0, 0.0, 0.0, 0.0
 
-    signal = np.zeros_like(prob_up, dtype=float)
-    signal[longs] = 1.0
-    signal[shorts] = -1.0
-    gross = signal[active] * y_return[active]
-    net = gross - fee_percent
+    alloc = np.zeros_like(prob_up, dtype=float)
+    # Scale allocation with conviction distance from threshold
+    for i in range(len(prob_up)):
+        if longs[i]:
+            strength = min((prob_up[i] - prob_threshold) / (1.0 - prob_threshold), 1.0)
+            alloc[i] = min_allocation + strength * (max_allocation - min_allocation)
+        elif shorts[i]:
+            strength = min(((1.0 - prob_threshold) - prob_up[i]) / (1.0 - prob_threshold), 1.0)
+            alloc[i] = -(min_allocation + strength * (max_allocation - min_allocation))
+
+    abs_alloc = np.abs(alloc[active])
+    gross = alloc[active] * y_return[active]
+    cost_per_trade = abs_alloc * (fee_percent + slippage_percent)
+    net = gross - cost_per_trade
 
     wins = float(np.sum(net > 0))
     trades = int(net.shape[0])

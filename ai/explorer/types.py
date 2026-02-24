@@ -32,8 +32,17 @@ class ExperimentResult:
     fees_percent: float
     slippage_percent: float = 0.0
     trades_count: int = 0
+    max_drawdown_percent: float = 0.0
+    sharpe_ratio: float = 0.0
+    win_rate_percent: float = 0.0
+    periods: int = 0
     by_symbol: dict[str, float] = field(default_factory=dict)
-    meta: dict[str, Any] = field(default_factory=dict)  # symbol_set, session_hours, etc.
+    meta: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def fitness(self) -> float:
+        """Risk-adjusted fitness: Sharpe - drawdown penalty."""
+        return self.sharpe_ratio - 0.2 * self.max_drawdown_percent
 
     def to_dict(self) -> dict:
         return {
@@ -45,6 +54,11 @@ class ExperimentResult:
             "fees_percent": self.fees_percent,
             "slippage_percent": self.slippage_percent,
             "trades_count": self.trades_count,
+            "max_drawdown_percent": self.max_drawdown_percent,
+            "sharpe_ratio": self.sharpe_ratio,
+            "win_rate_percent": self.win_rate_percent,
+            "periods": self.periods,
+            "fitness": self.fitness,
         }
 
 
