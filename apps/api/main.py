@@ -1237,6 +1237,645 @@ async def compare_maker_vs_taker(
         logger.error(f"Error comparing fees: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ============================================================================
+# WAREHOUSE ENDPOINTS (DuckDB Data Lake)
+# ============================================================================
+
+import duckdb
+import subprocess
+import threading
+
+# Global process tracker for background jobs
+_background_jobs: Dict[str, Dict[str, Any]] = {}
+_job_lock = threading.Lock()
+
+def get_duckdb_path() -> str:
+    """Get DuckDB path from environment or default"""
+    return os.getenv('DBT_DUCKDB_PATH', 
+                     os.path.join(os.path.dirname(__file__), '..', '..', 'artifacts', 'warehouse', 'crypto.duckdb'))
+
+class SQLQuery(BaseModel):
+    sql: str
+    limit: Optional[int] = 1000
+
+@app.get("/warehouse/tables")
+async def list_warehouse_tables():
+    """List all tables in the DuckDB warehouse"""
+    try:
+        db_path = get_duckdb_path()
+        if not os.path.exists(db_path):
+            return {
+                'status': 'success',
+                'data': {
+                    'tables': [],
+                    'message': 'Warehouse database not found. Run backfill first.'
+                }
+            }
+        
+        conn = duckdb.connect(db_path, read_only=True)
+        tables = conn.execute("SHOW TABLES").fetchall()
+        
+        table_info = []
+        for (table_name,) in tables:
+            try:
+                count = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+                table_info.append({'name': table_name, 'row_count': count})
+            except Exception:
+                table_info.append({'name': table_name, 'row_count': 'error'})
+        
+        conn.close()
+        
+        return {
+            'status': 'success',
+            'data': {
+                'tables': table_info,
+                'db_path': db_path
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error listing tables: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/warehouse/query")
+async def execute_warehouse_query(query: SQLQuery):
+    """Execute a SQL query on the DuckDB warehouse"""
+    try:
+        db_path = get_duckdb_path()
+        if not os.path.exists(db_path):
+            raise HTTPException(status_code=404, detail="Warehouse database not found")
+        
+        # Basic SQL injection protection
+        sql_lower = query.sql.lower().strip()
+        if any(keyword in sql_lower for keyword in ['drop', 'delete', 'update', 'insert', 'alter', 'create']):
+            raise HTTPException(status_code=400, detail="Only SELECT queries are allowed")
+        
+        conn = duckdb.connect(db_path, read_only=True)
+        
+        # Add LIMIT if not present
+        if 'limit' not in sql_lower:
+            sql = f"{query.sql} LIMIT {query.limit}"
+        else:
+            sql = query.sql
+        
+        result = conn.execute(sql).fetchdf()
+        conn.close()
+        
+        return {
+            'status': 'success',
+            'data': {
+                'columns': list(result.columns),
+                'rows': result.to_dict(orient='records'),
+                'row_count': len(result)
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error executing query: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/warehouse/symbols")
+async def list_warehouse_symbols():
+    """List all symbols with data in the warehouse"""
+    try:
+        db_path = get_duckdb_path()
+        if not os.path.exists(db_path):
+            return {'status': 'success', 'data': {'symbols': []}}
+        
+        conn = duckdb.connect(db_path, read_only=True)
+        
+        # Try to get symbols from market_snapshot_raw or similar table
+        symbols = []
+        try:
+            result = conn.execute("""
+                SELECT DISTINCT symbol, COUNT(*) as records
+                FROM market_snapshot_raw 
+                GROUP BY symbol 
+                ORDER BY records DESC
+            """).fetchdf()
+            symbols = result.to_dict(orient='records')
+        except Exception:
+            # Try alternative table
+            try:
+                tables = conn.execute("SHOW TABLES").fetchall()
+                for (table_name,) in tables:
+                    if 'symbol' in [col[0] for col in conn.execute(f"DESCRIBE {table_name}").fetchall()]:
+                        result = conn.execute(f"SELECT DISTINCT symbol FROM {table_name} LIMIT 100").fetchdf()
+                        symbols = [{'symbol': s, 'table': table_name} for s in result['symbol'].tolist()]
+                        break
+            except Exception:
+                pass
+        
+        conn.close()
+        
+        return {
+            'status': 'success',
+            'data': {'symbols': symbols}
+        }
+    except Exception as e:
+        logger.error(f"Error listing symbols: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/warehouse/features/{symbol}")
+async def get_symbol_features(
+    symbol: str,
+    limit: int = Query(default=100, ge=1, le=10000)
+):
+    """Get decision features for a symbol"""
+    try:
+        db_path = get_duckdb_path()
+        if not os.path.exists(db_path):
+            raise HTTPException(status_code=404, detail="Warehouse database not found")
+        
+        conn = duckdb.connect(db_path, read_only=True)
+        
+        # Try decision_features table first
+        try:
+            result = conn.execute(f"""
+                SELECT * FROM decision_features 
+                WHERE symbol = '{symbol.upper()}'
+                ORDER BY event_time DESC
+                LIMIT {limit}
+            """).fetchdf()
+        except Exception:
+            # Fallback to market data
+            result = conn.execute(f"""
+                SELECT * FROM market_snapshot_raw 
+                WHERE symbol = '{symbol.upper()}'
+                ORDER BY event_time DESC
+                LIMIT {limit}
+            """).fetchdf()
+        
+        conn.close()
+        
+        return {
+            'status': 'success',
+            'data': {
+                'symbol': symbol.upper(),
+                'columns': list(result.columns),
+                'rows': result.to_dict(orient='records'),
+                'row_count': len(result)
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting features: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/warehouse/stats")
+async def get_warehouse_stats():
+    """Get warehouse statistics"""
+    try:
+        db_path = get_duckdb_path()
+        lake_root = os.getenv('LAKE_ROOT', os.path.join(os.path.dirname(__file__), '..', '..', 'data_lake'))
+        
+        stats = {
+            'db_exists': os.path.exists(db_path),
+            'db_path': db_path,
+            'lake_root': lake_root,
+            'lake_exists': os.path.exists(lake_root),
+            'tables': []
+        }
+        
+        if stats['db_exists']:
+            stats['db_size_mb'] = round(os.path.getsize(db_path) / (1024 * 1024), 2)
+            
+            conn = duckdb.connect(db_path, read_only=True)
+            tables = conn.execute("SHOW TABLES").fetchall()
+            
+            for (table_name,) in tables:
+                try:
+                    count = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()[0]
+                    stats['tables'].append({'name': table_name, 'rows': count})
+                except Exception:
+                    pass
+            
+            conn.close()
+        
+        return {'status': 'success', 'data': stats}
+    except Exception as e:
+        logger.error(f"Error getting stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================================================
+# ACTIONS ENDPOINTS (Remote Command Execution)
+# ============================================================================
+
+class BackfillRequest(BaseModel):
+    symbols: str = "top"  # "top", "all", or comma-separated symbols
+    months: int = 36
+    interval: str = "1h"
+
+class TrainRequest(BaseModel):
+    experiment_name: Optional[str] = "remote-train"
+    trials: int = 50
+
+
+class ExplorerAgentRequest(BaseModel):
+    mode: str = "quick"  # quick, grid, full
+    strategy: Optional[str] = "mean_reversion"  # for grid mode
+    horizon: str = "4h"
+    max_combos: int = 30
+
+
+class ModelEvaluationRequest(BaseModel):
+    train_days: int = 60
+    test_days: int = 14
+    step_days: int = 14
+
+
+def run_background_job(job_id: str, command: List[str], cwd: str):
+    """Run a command in background and track its status"""
+    try:
+        with _job_lock:
+            _background_jobs[job_id]['status'] = 'running'
+            _background_jobs[job_id]['started_at'] = asyncio.get_event_loop().time() if asyncio.get_event_loop().is_running() else 0
+        
+        result = subprocess.run(
+            command,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            env={**os.environ, 'LAKE_ROOT': os.path.join(cwd, 'data_lake')}
+        )
+        
+        with _job_lock:
+            _background_jobs[job_id]['status'] = 'completed' if result.returncode == 0 else 'failed'
+            _background_jobs[job_id]['exit_code'] = result.returncode
+            _background_jobs[job_id]['stdout'] = result.stdout[-5000:] if result.stdout else ''
+            _background_jobs[job_id]['stderr'] = result.stderr[-2000:] if result.stderr else ''
+    except Exception as e:
+        with _job_lock:
+            _background_jobs[job_id]['status'] = 'error'
+            _background_jobs[job_id]['error'] = str(e)
+
+@app.post("/actions/backfill")
+async def start_backfill(request: BackfillRequest):
+    """Start a backfill job in background"""
+    import uuid
+    from datetime import datetime
+    
+    job_id = str(uuid.uuid4())[:8]
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    venv_python = os.path.join(project_root, 'venv', 'Scripts', 'python.exe')
+    
+    if not os.path.exists(venv_python):
+        venv_python = os.path.join(project_root, 'venv', 'bin', 'python')
+    
+    command = [
+        venv_python, '-m', 'data_platform.backfill_from_vision',
+        '--interval', request.interval,
+        '--months', str(request.months)
+    ]
+    
+    with _job_lock:
+        _background_jobs[job_id] = {
+            'type': 'backfill',
+            'status': 'starting',
+            'symbols': request.symbols,
+            'months': request.months,
+            'interval': request.interval,
+            'created_at': datetime.now().isoformat()
+        }
+    
+    # Set environment and start thread
+    os.environ['DP_SYMBOLS'] = request.symbols
+    thread = threading.Thread(target=run_background_job, args=(job_id, command, project_root))
+    thread.start()
+    
+    return {
+        'status': 'success',
+        'data': {
+            'job_id': job_id,
+            'message': f'Backfill started for {request.symbols} symbols',
+            'check_status': f'/actions/status/{job_id}'
+        }
+    }
+
+@app.post("/actions/warehouse-load")
+async def start_warehouse_load():
+    """Load bronze data into DuckDB"""
+    import uuid
+    from datetime import datetime
+    
+    job_id = str(uuid.uuid4())[:8]
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    venv_python = os.path.join(project_root, 'venv', 'Scripts', 'python.exe')
+    
+    if not os.path.exists(venv_python):
+        venv_python = os.path.join(project_root, 'venv', 'bin', 'python')
+    
+    load_script = '''
+from data_platform.config import DataPlatformConfig
+from data_platform.loaders.bronze_to_duckdb import load_bronze_to_duckdb
+import os
+cfg = DataPlatformConfig()
+db_path = os.environ.get("DBT_DUCKDB_PATH", "artifacts/warehouse/crypto.duckdb")
+count = load_bronze_to_duckdb(cfg, db_path)
+print(f"Loaded {count} records")
+'''
+    
+    command = [venv_python, '-c', load_script]
+    
+    with _job_lock:
+        _background_jobs[job_id] = {
+            'type': 'warehouse-load',
+            'status': 'starting',
+            'created_at': datetime.now().isoformat()
+        }
+    
+    thread = threading.Thread(target=run_background_job, args=(job_id, command, project_root))
+    thread.start()
+    
+    return {
+        'status': 'success',
+        'data': {
+            'job_id': job_id,
+            'message': 'Warehouse load started',
+            'check_status': f'/actions/status/{job_id}'
+        }
+    }
+
+@app.post("/actions/train")
+async def start_training(request: TrainRequest):
+    """Start ML training job"""
+    import uuid
+    from datetime import datetime
+    
+    job_id = str(uuid.uuid4())[:8]
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    venv_python = os.path.join(project_root, 'venv', 'Scripts', 'python.exe')
+    
+    if not os.path.exists(venv_python):
+        venv_python = os.path.join(project_root, 'venv', 'bin', 'python')
+    
+    command = [
+        venv_python, 'examples/quant_optuna_tuning.py',
+        '--trials', str(request.trials),
+        '--mlflow-uri', f'sqlite:///{project_root}/artifacts/quant_model/mlflow.db',
+        '--mlflow-experiment', request.experiment_name
+    ]
+    
+    with _job_lock:
+        _background_jobs[job_id] = {
+            'type': 'train',
+            'status': 'starting',
+            'experiment': request.experiment_name,
+            'trials': request.trials,
+            'created_at': datetime.now().isoformat()
+        }
+    
+    thread = threading.Thread(target=run_background_job, args=(job_id, command, project_root))
+    thread.start()
+    
+    return {
+        'status': 'success',
+        'data': {
+            'job_id': job_id,
+            'message': f'Training started with {request.trials} trials',
+            'check_status': f'/actions/status/{job_id}'
+        }
+    }
+
+
+@app.post("/actions/explorer-agent")
+async def start_explorer_agent(request: ExplorerAgentRequest):
+    """Start ExplorationAgent in background (quick/grid/full)"""
+    import uuid
+    from datetime import datetime
+
+    job_id = str(uuid.uuid4())[:8]
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    venv_python = os.path.join(project_root, 'venv', 'Scripts', 'python.exe')
+    if not os.path.exists(venv_python):
+        venv_python = os.path.join(project_root, 'venv', 'bin', 'python')
+
+    cmd = [
+        venv_python, 'examples/ai_explorer_agent.py', request.mode,
+        '--horizon', request.horizon, '--max-combos', str(request.max_combos),
+    ]
+    if request.mode == 'grid':
+        cmd.extend(['--strategy', request.strategy or 'mean_reversion'])
+
+    with _job_lock:
+        _background_jobs[job_id] = {
+            'type': 'explorer-agent',
+            'status': 'starting',
+            'mode': request.mode,
+            'strategy': request.strategy,
+            'created_at': datetime.now().isoformat()
+        }
+
+    env = dict(os.environ)
+    env['DBT_DUCKDB_PATH'] = env.get('DBT_DUCKDB_PATH', 'artifacts/warehouse/crypto.duckdb')
+    if not os.path.isabs(env['DBT_DUCKDB_PATH']):
+        env['DBT_DUCKDB_PATH'] = os.path.join(project_root, env['DBT_DUCKDB_PATH'])
+
+    def _run():
+        try:
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'running'
+            result = subprocess.run(
+                cmd, cwd=project_root, capture_output=True, text=True, env=env
+            )
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'completed' if result.returncode == 0 else 'failed'
+                _background_jobs[job_id]['exit_code'] = result.returncode
+                _background_jobs[job_id]['stdout'] = (result.stdout or '')[-5000:]
+                _background_jobs[job_id]['stderr'] = (result.stderr or '')[-2000:]
+        except Exception as e:
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'error'
+                _background_jobs[job_id]['error'] = str(e)
+
+    thread = threading.Thread(target=_run)
+    thread.start()
+
+    return {
+        'status': 'success',
+        'data': {
+            'job_id': job_id,
+            'message': f'Explorer agent ({request.mode}) started',
+            'check_status': f'/actions/status/{job_id}'
+        }
+    }
+
+
+@app.post("/actions/model-evaluation")
+async def start_model_evaluation(request: ModelEvaluationRequest):
+    """Start model evaluation (LightGBM vs XGBoost vs mean reversion)"""
+    import uuid
+    from datetime import datetime
+
+    job_id = str(uuid.uuid4())[:8]
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    venv_python = os.path.join(project_root, 'venv', 'Scripts', 'python.exe')
+    if not os.path.exists(venv_python):
+        venv_python = os.path.join(project_root, 'venv', 'bin', 'python')
+
+    cmd = [
+        venv_python, 'examples/quant_model_evaluation.py',
+        '--train-days', str(request.train_days),
+        '--test-days', str(request.test_days),
+        '--step-days', str(request.step_days),
+    ]
+
+    with _job_lock:
+        _background_jobs[job_id] = {
+            'type': 'model-evaluation',
+            'status': 'starting',
+            'created_at': datetime.now().isoformat()
+        }
+
+    def _run():
+        try:
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'running'
+            result = subprocess.run(
+                cmd, cwd=project_root, capture_output=True, text=True,
+                env={**os.environ, 'LAKE_ROOT': os.path.join(project_root, 'data_lake')}
+            )
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'completed' if result.returncode == 0 else 'failed'
+                _background_jobs[job_id]['exit_code'] = result.returncode
+                _background_jobs[job_id]['stdout'] = (result.stdout or '')[-5000:]
+                _background_jobs[job_id]['stderr'] = (result.stderr or '')[-2000:]
+        except Exception as e:
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'error'
+                _background_jobs[job_id]['error'] = str(e)
+
+    thread = threading.Thread(target=_run)
+    thread.start()
+
+    return {
+        'status': 'success',
+        'data': {
+            'job_id': job_id,
+            'message': 'Model evaluation started',
+            'check_status': f'/actions/status/{job_id}'
+        }
+    }
+
+
+@app.post("/actions/backfill-external")
+async def start_backfill_external():
+    """Backfill external sources (FRED, Fear&Greed, CoinGecko, FED Calendar, Glassnode)"""
+    import uuid
+    from datetime import datetime
+
+    job_id = str(uuid.uuid4())[:8]
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    venv_python = os.path.join(project_root, 'venv', 'Scripts', 'python.exe')
+    if not os.path.exists(venv_python):
+        venv_python = os.path.join(project_root, 'venv', 'bin', 'python')
+
+    cmd = [venv_python, '-m', 'data_platform.backfill_external_sources']
+
+    with _job_lock:
+        _background_jobs[job_id] = {
+            'type': 'backfill-external',
+            'status': 'starting',
+            'created_at': datetime.now().isoformat()
+        }
+
+    def _run():
+        try:
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'running'
+            result = subprocess.run(
+                cmd, cwd=project_root, capture_output=True, text=True,
+                env={**os.environ, 'LAKE_ROOT': os.path.join(project_root, 'data_lake')}
+            )
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'completed' if result.returncode == 0 else 'failed'
+                _background_jobs[job_id]['exit_code'] = result.returncode
+                _background_jobs[job_id]['stdout'] = (result.stdout or '')[-5000:]
+                _background_jobs[job_id]['stderr'] = (result.stderr or '')[-2000:]
+        except Exception as e:
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'error'
+                _background_jobs[job_id]['error'] = str(e)
+
+    thread = threading.Thread(target=_run)
+    thread.start()
+
+    return {
+        'status': 'success',
+        'data': {
+            'job_id': job_id,
+            'message': 'Backfill external sources started',
+            'check_status': f'/actions/status/{job_id}'
+        }
+    }
+
+
+@app.get("/actions/status")
+async def list_all_jobs():
+    """List all background jobs"""
+    with _job_lock:
+        return {
+            'status': 'success',
+            'data': {
+                'jobs': dict(_background_jobs)
+            }
+        }
+
+@app.get("/actions/status/{job_id}")
+async def get_job_status(job_id: str):
+    """Get status of a specific job"""
+    with _job_lock:
+        if job_id not in _background_jobs:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        return {
+            'status': 'success',
+            'data': _background_jobs[job_id]
+        }
+
+@app.delete("/actions/{job_id}")
+async def cancel_job(job_id: str):
+    """Cancel/remove a job from tracking"""
+    with _job_lock:
+        if job_id in _background_jobs:
+            del _background_jobs[job_id]
+            return {'status': 'success', 'message': 'Job removed'}
+        raise HTTPException(status_code=404, detail="Job not found")
+
+# ============================================================================
+# SERVER INFO
+# ============================================================================
+
+@app.get("/server/info")
+async def get_server_info():
+    """Get server information for remote access"""
+    import socket
+    
+    hostname = socket.gethostname()
+    try:
+        local_ip = socket.gethostbyname(hostname)
+    except Exception:
+        local_ip = "unknown"
+    
+    return {
+        'status': 'success',
+        'data': {
+            'hostname': hostname,
+            'local_ip': local_ip,
+            'api_port': 8000,
+            'mlflow_port': 5001,
+            'optuna_port': 8081,
+            'endpoints': {
+                'api_docs': f'http://{local_ip}:8000/docs',
+                'warehouse': f'http://{local_ip}:8000/warehouse/tables',
+                'actions': f'http://{local_ip}:8000/actions/status',
+                'mlflow': f'http://{local_ip}:5001',
+                'optuna': f'http://{local_ip}:8081'
+            }
+        }
+    }
+
 if __name__ == '__main__':
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -10,6 +10,12 @@ help:
 	@echo "  compose-down - Stop API + Dagster + Postgres (Docker Compose)"
 	@echo "  local-lake-init - Create local external data lake directory"
 	@echo "  local-quant-stack - Run pipeline + planner against local stack"
+	@echo "  agent-flow-data  - Backfill external + warehouse-load"
+	@echo "  agent-flow-train - Optuna + model evaluation"
+	@echo "  agent-flow-full  - Full agent flow (data + train + explorer + eval)"
+	@echo "  suite-cycle      - Un ciclo suite agentes (tuning->decision->report->evolution)"
+	@echo "  suite-prender-todo - Comprobar entorno + datos y ejecutar suite"
+	@echo "  prender-full      - Datos (temporales+gold) + modelo + suite con champion (todos los datos)"
 	@echo "  deploy-dev  - Deploy to development stage"
 	@echo "  deploy-prod - Deploy to production stage"
 	@echo "  clean       - Clean up generated files"
@@ -105,6 +111,39 @@ quant-model-benchmark:
 
 quant-optuna:
 	python examples/quant_optuna_tuning.py --trials 120 --mlflow-uri sqlite:///artifacts/quant_model/mlflow.db --mlflow-experiment quant-optuna --register-model-name quant_alpha_entry_lgbm --set-champion-alias
+
+# Pipeline 100%% local: entrenar + registrar + backtest (0€). Ver docs/AUTOMATIZACION_MODELOS.md
+auto-train-eval:
+	python scripts/auto_train_eval.py --set-champion
+
+# Primero pipelines datos (bronze + warehouse + dbt), luego training. Para cron con datos al día.
+auto-data-then-train:
+	python scripts/auto_data_then_train.py --set-champion
+
+# Suite de agentes quant: tuning -> decisión -> informe -> evolución. Ver docs/SUITE_AGENTES_QUANT.md
+suite-cycle:
+	python scripts/run_suite_cycle.py
+
+suite-cycle-dry:
+	python scripts/run_suite_cycle.py --no-persist --no-report
+
+# Prender todo: comprueba entorno y datos; si faltan datos opcionalmente los genera; ejecuta un ciclo de la suite.
+suite-prender-todo:
+	python scripts/run_suite_prender_todo.py
+
+suite-prender-todo-ensure-data:
+	python scripts/run_suite_prender_todo.py --ensure-data
+
+# Prender completo: datos (temporales+gold) -> entrenar modelo -> suite con champion. Usa todos los datos posibles.
+prender-full:
+	python scripts/run_prender_full.py
+
+prender-full-skip-data:
+	python scripts/run_prender_full.py --skip-data
+
+# Optuna con GPU (LightGBM): requiere LightGBM compilado con GPU. Ver docs/GPU_CUDA_SETUP.md
+quant-optuna-gpu:
+	USE_GPU=1 python examples/quant_optuna_tuning.py --use-gpu --trials 120 --mlflow-uri sqlite:///artifacts/quant_model/mlflow.db --mlflow-experiment quant-optuna --register-model-name quant_alpha_entry_lgbm --set-champion-alias
 
 quant-optuna-robust:
 	python examples/quant_optuna_tuning.py --trials 120 --optimize-time-windows --lookback-days-grid 15,30,60,90,120 --train-days-grid 45,60,90 --test-days-grid 7,14,21 --step-days-grid 7,14 --mlflow-uri sqlite:///artifacts/quant_model/mlflow.db --mlflow-experiment quant-optuna --register-model-name quant_alpha_entry_lgbm --set-champion-alias
@@ -241,6 +280,33 @@ ai-strategy-explorer:
 ai-explorer-agent:
 	@echo "📊 Agente explorador (librería ai.explorer)..."
 	DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" venv/bin/python examples/ai_explorer_agent.py quick
+
+ai-explorer-agent-full:
+	@echo "📊 Agente explorador (full)..."
+	DBT_DUCKDB_PATH="$(shell pwd)/artifacts/warehouse/crypto.duckdb" venv/bin/python examples/ai_explorer_agent.py full
+
+quant-model-eval:
+	@echo "📊 Evaluación de modelos (LightGBM vs XGBoost vs mean reversion)..."
+	LAKE_ROOT="$(shell pwd)/data_lake" venv/bin/python examples/quant_model_evaluation.py --dataset data_lake/gold/signals/decision_features_backfill
+
+# Agent flows (automatización)
+agent-flow-data:
+	@echo "📊 Agent flow: data (backfill external + warehouse-load)..."
+	venv/bin/python -m data_platform.backfill_external_sources
+	$(MAKE) warehouse-load
+
+agent-flow-train:
+	@echo "📊 Agent flow: train (optuna + model eval)..."
+	$(MAKE) quant-optuna
+	$(MAKE) quant-model-eval
+
+agent-flow-full:
+	@echo "📊 Agent flow: full (data + train + explorer + eval)..."
+	venv/bin/python scripts/run_agent_flow.py --steps all
+
+agent-flow-train-only:
+	@echo "📊 Agent flow: train only (skip data step)..."
+	venv/bin/python scripts/run_agent_flow.py --steps all --skip-data
 
 # Dagster orchestration
 install-dagster:

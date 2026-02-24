@@ -7,6 +7,8 @@ Este starter usa enfoque **asset-based**:
 - `bronze_low_ingestion` (macro/FED/onchain)
 - `warehouse_raw_load` (carga tablas `raw.*` en DuckDB)
 - `warehouse_dbt_build` (materializa `bronze/silver/gold` con dbt)
+- `quant_model_train` (entrena LightGBM con decision_features, registra en MLflow, backtest; depende de warehouse_dbt_build)
+- `quant_suite_cycle` (un ciclo de la suite de agentes: tuning → decisión → informe → evolución; lee de DuckDB)
 
 y opcionalmente assets dbt (si existe `dbt/target/manifest.json`).
 
@@ -58,6 +60,8 @@ dagster asset materialize \
 - `crypto_lake_low_every_4_hours`: solo ingestión bronze low
 - `crypto_lake_full_every_4_hours`: ejecuta high+medium+low + warehouse + dbt (cada 4h)
 - `crypto_lake_full_every_hour`: mismo job, cada hora (mejor temporalidad)
+- `crypto_lake_full_plus_train_weekly`: **datos + training + suite** (domingo 23:00); job `crypto_lake_full_plus_train_job`
+- **`quant_suite_daily`**: **suite de agentes** (cada día 04:00); job `quant_suite_job` — el agente que sigue corriendo la suite en Docker
 
 **Temporalidad:** Cuando corre `crypto_lake_full`, todos los collectors (high+medium+low) se ejecutan en la misma ventana → mismo `event_time` → todas las tablas raw quedan alineadas. Luego `warehouse_raw_load` carga todo y `warehouse_dbt_build` construye decision_features.
 

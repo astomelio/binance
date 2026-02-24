@@ -240,15 +240,19 @@ def run_backfill(
         return (symbol, _parse_funding_rate_csv(content, symbol))
 
     fr_tasks = [(s, m) for s in symbols for m in month_list]
+    fr_done = 0
     with ThreadPoolExecutor(max_workers=workers) as ex:
         fr_futures = {ex.submit(fetch_funding, s, m): (s, m) for s, m in fr_tasks}
-    for fut in as_completed(fr_futures):
-        try:
-            symbol, series = fut.result()
-            if series:
-                funding_by_symbol[symbol].extend(series)
-        except Exception:
-            pass
+        for fut in as_completed(fr_futures):
+            fr_done += 1
+            if fr_done % 100 == 0:
+                print(f"  [funding {fr_done}/{len(fr_tasks)}] ...")
+            try:
+                symbol, series = fut.result()
+                if series:
+                    funding_by_symbol[symbol].extend(series)
+            except Exception:
+                pass
     for s in symbols:
         funding_by_symbol[s] = sorted(funding_by_symbol[s])
 

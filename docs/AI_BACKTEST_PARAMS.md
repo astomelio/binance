@@ -113,6 +113,8 @@ alloc = compute_allocations(
 - En cada `event_time`: `alloc = compute_allocations(features)`
 - Retorno: `sum(alloc[s] * fwd_return[s])`
 - Fees: `sum(|delta|) * fee_percent` sobre cambios de posición
+- Slippage (opcional): `slippage_percent` por cambio de posición (p. ej. 0.02 para realismo)
+- Liquidez: `min_quote_volume_24h` excluye símbolos con volumen 24h (USD) por debajo del umbral
 
 ### 4. Mean reversion (pares volátiles)
 
@@ -149,6 +151,20 @@ make symbols-list        # los configurados
 make symbols-list-all    # todos de Binance
 ```
 
+## Realismo del backtest
+
+Para que los resultados se acerquen a la ejecución real se aplican:
+
+| Medida | Dónde | Descripción |
+|--------|--------|-------------|
+| **Lag macro (no lookahead)** | `br_macro_context.sql` | SP500 y oil se unen por **día anterior** al `event_time`. El cierre del S&P es ~21:00 UTC; usar el mismo día causaría leakage. |
+| **Slippage** | `run_allocation_backtest(slippage_percent=0.02)` | **0.02** = 0,02% del notional por cada “lado” del trade (entrada o salida). Ej.: pasar de 0→30% long cobra 0,006%; ida y vuelta 0,012%. Simula que no ejecutas exactamente al precio de cierre. Por defecto 0. |
+| **Filtro de liquidez** | `run_allocation_backtest(min_quote_volume_24h=1e6)` | **1e6** = 1 M USD de volumen en 24h. Solo se incluyen pares con al menos ese volumen; por debajo el spread/slippage real suele ser alto y el backtest sería engañoso. 1M es permisivo; 10M–50M más realista. Por defecto sin filtro. |
+
+Runner y explorer exponen estos parámetros: `run_backtest(slippage_percent=..., min_quote_volume_24h=...)`, `run_single(..., slippage_percent=..., min_quote_volume_24h=...)`.
+
+---
+
 ## Resumen
 
 | Qué parametrizar | Dónde |
@@ -157,3 +173,4 @@ make symbols-list-all    # todos de Binance
 | Señales heurísticas | dbt `fct_decision_features.sql` (alpha_signal) |
 | Umbrales ML | `ai/training/pipeline.py`, calibration |
 | Riesgo FED | dbt `fed_window`, alpha_backtest cierra en PRE/POST |
+| Slippage / liquidez | `run_backtest`, `run_allocation_backtest`, `run_single` |

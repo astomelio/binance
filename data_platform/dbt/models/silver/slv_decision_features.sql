@@ -47,7 +47,9 @@ joined as (
         mc.total_market_cap_usd,
         mc.fear_greed_value,
         mc.fed_funds_rate,
-        mc.next_fed_decision_date
+        mc.next_fed_decision_date,
+        mc.sp500_close,
+        mc.oil_wti_usd
     from market m
     left join macro mc
       on mc.event_time = m.event_time

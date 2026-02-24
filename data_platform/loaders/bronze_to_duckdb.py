@@ -187,16 +187,26 @@ def _load_dex_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
 
 def _load_global_market_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
     rows: List[Dict] = []
-    for event in _iter_jsonl(f"{cfg.lake_root}/bronze/coingecko/global_market/**/part-*.jsonl"):
-        payload = event.get("payload", {}) or {}
-        rows.append(
-            {
-                "event_time": event.get("event_time"),
-                "btc_dominance": float(payload.get("market_cap_percentage", {}).get("btc", 0) or 0),
-                "total_market_cap_usd": float(payload.get("total_market_cap", {}).get("usd", 0) or 0),
-                "total_volume_usd": float(payload.get("total_volume", {}).get("usd", 0) or 0),
-            }
-        )
+    patterns = [
+        f"{cfg.lake_root}/bronze/coingecko/global_market/**/part-*.jsonl",
+        f"{cfg.lake_root}/bronze/coingecko_historical/global_market/**/part-*.jsonl",
+    ]
+    seen = set()
+    for pattern in patterns:
+        for event in _iter_jsonl(pattern):
+            payload = event.get("payload", {}) or {}
+            key = (event.get("event_time"),)
+            if key in seen:
+                continue
+            seen.add(key)
+            rows.append(
+                {
+                    "event_time": event.get("event_time"),
+                    "btc_dominance": float(payload.get("market_cap_percentage", {}).get("btc", 0) or 0),
+                    "total_market_cap_usd": float(payload.get("total_market_cap", {}).get("usd", 0) or 0),
+                    "total_volume_usd": float(payload.get("total_volume", {}).get("usd", 0) or 0),
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -220,31 +230,74 @@ def _load_fear_greed_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
 
 def _load_macro_rates_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
     rows: List[Dict] = []
-    for event in _iter_jsonl(f"{cfg.lake_root}/bronze/fred/macro_rates/**/part-*.jsonl"):
-        payload = event.get("payload", {}) or {}
-        observations = payload.get("observations", []) or []
-        fed_funds_rate = 0.0
-        if observations:
-            try:
-                fed_funds_rate = float(observations[-1].get("value", 0) or 0)
-            except (ValueError, TypeError):
-                fed_funds_rate = 0.0
-        rows.append({"event_time": event.get("event_time"), "fed_funds_rate": fed_funds_rate})
+    seen: set = set()
+    patterns = [
+        f"{cfg.lake_root}/bronze/fred/macro_rates/**/part-*.jsonl",
+        f"{cfg.lake_root}/bronze/fred_historical/macro_rates/**/part-*.jsonl",
+    ]
+    for pattern in patterns:
+        for event in _iter_jsonl(pattern):
+            et = event.get("event_time")
+            if et in seen:
+                continue
+            fed_funds_rate = 0.0
+            if "fed_funds_rate" in event:
+                fed_funds_rate = float(event.get("fed_funds_rate", 0) or 0)
+            else:
+                payload = event.get("payload", {}) or {}
+                observations = payload.get("observations", []) or []
+                if observations:
+                    try:
+                        fed_funds_rate = float(observations[-1].get("value", 0) or 0)
+                    except (ValueError, TypeError):
+                        pass
+            seen.add(et)
+            rows.append({"event_time": et, "fed_funds_rate": fed_funds_rate})
+    return pd.DataFrame(rows)
+
+
+def _load_macro_assets_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
+    rows: List[Dict] = []
+    seen: set = set()
+    for event in _iter_jsonl(f"{cfg.lake_root}/bronze/fred_historical/macro_assets/**/part-*.jsonl"):
+        et = event.get("event_time")
+        if et in seen:
+            continue
+        seen.add(et)
+        rows.append({
+            "event_time": et,
+            "sp500_close": float(event.get("sp500_close") or 0) if event.get("sp500_close") is not None else None,
+            "oil_wti_usd": float(event.get("oil_wti_usd") or 0) if event.get("oil_wti_usd") is not None else None,
+        })
     return pd.DataFrame(rows)
 
 
 def _load_fed_calendar_raw(cfg: DataPlatformConfig) -> pd.DataFrame:
     rows: List[Dict] = []
     now = datetime.now(timezone.utc).date().isoformat()
-    for event in _iter_jsonl(f"{cfg.lake_root}/bronze/fed_calendar/decision_dates/**/part-*.jsonl"):
-        payload = event.get("payload", {}) or {}
-        dates = payload.get("decision_dates_utc", []) or []
-        next_date = ""
-        for date_str in dates:
-            if date_str >= now:
-                next_date = date_str
-                break
-        rows.append({"event_time": event.get("event_time"), "next_fed_decision_date": next_date})
+    patterns = [
+        f"{cfg.lake_root}/bronze/fed_calendar/decision_dates/**/part-*.jsonl",
+        f"{cfg.lake_root}/bronze/fed_calendar_historical/decision_dates/**/part-*.jsonl",
+    ]
+    all_dates: List[str] = []
+    for pattern in patterns:
+        for event in _iter_jsonl(pattern):
+            payload = event.get("payload", {}) or {}
+            dates = payload.get("decision_dates_utc", []) or []
+            if not dates and "decision_date" in event:
+                dates = [event["decision_date"]]
+            for d in dates:
+                if d and d not in all_dates:
+                    all_dates.append(d)
+    all_dates = sorted(set(all_dates))
+    next_date = ""
+    for d in all_dates:
+        if d >= now:
+            next_date = d
+            break
+    # One row per FOMC date; br_macro_context joins - we need one row with next_fed for propagation
+    if all_dates:
+        rows.append({"event_time": now + "T12:00:00+00:00", "next_fed_decision_date": next_date})
     return pd.DataFrame(rows)
 
 
@@ -257,6 +310,7 @@ _EMPTY_TABLE_DDL: Dict[str, str] = {
     "global_market_raw": "event_time VARCHAR, btc_dominance DOUBLE, total_market_cap_usd DOUBLE, total_volume_usd DOUBLE",
     "fear_greed_raw": "event_time VARCHAR, fear_greed_value DOUBLE, fear_greed_classification VARCHAR",
     "macro_rates_raw": "event_time VARCHAR, fed_funds_rate DOUBLE",
+    "macro_assets_raw": "event_time VARCHAR, sp500_close DOUBLE, oil_wti_usd DOUBLE",
     "fed_calendar_raw": "event_time VARCHAR, next_fed_decision_date VARCHAR",
 }
 
@@ -296,6 +350,7 @@ def load_bronze_to_duckdb(
         "global_market_raw": _load_global_market_raw(cfg),
         "fear_greed_raw": _load_fear_greed_raw(cfg),
         "macro_rates_raw": _load_macro_rates_raw(cfg),
+        "macro_assets_raw": _load_macro_assets_raw(cfg),
         "fed_calendar_raw": _load_fed_calendar_raw(cfg),
     }
     datasets = (

@@ -5,8 +5,9 @@ requests==2.31.0
 python-dotenv==1.0.0
 pydantic==2.5.0
 websockets==13.1
-scikit-learn==1.8.0
+scikit-learn==1.6.1
 lightgbm==4.6.0
+xgboost>=2.0.0  # model evaluation; con CUDA usa GPU NVIDIA
 optuna==4.7.0
 optuna-dashboard==0.20.0
 mlflow==3.9.0

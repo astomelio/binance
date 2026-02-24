@@ -29,3 +29,23 @@ crypto_lake_full_job = define_asset_job(
     ],
 )
 
+# Datos + entrenamiento de modelo (para schedule semanal o manual)
+crypto_lake_full_plus_train_job = define_asset_job(
+    name="crypto_lake_full_plus_train_job",
+    selection=[
+        "bronze_high_ingestion",
+        "bronze_medium_ingestion",
+        "bronze_low_ingestion",
+        "warehouse_raw_load",
+        "warehouse_dbt_build",
+        "quant_model_train",
+        "quant_suite_cycle",
+    ],
+)
+
+# Suite de agentes: un ciclo (tuning → decisión → informe → evolución). Lee de DuckDB.
+quant_suite_job = define_asset_job(
+    name="quant_suite_job",
+    selection=["quant_suite_cycle"],
+)
+

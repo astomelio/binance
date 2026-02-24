@@ -34,6 +34,11 @@ sources:
         freshness:
           warn_after: {count: 168, period: hour}
           error_after: {count: 336, period: hour}
+      - name: macro_assets_raw
+        description: "SP500, oil WTI from FRED (daily)"
+        freshness:
+          warn_after: {count: 48, period: hour}
+          error_after: {count: 168, period: hour}
       - name: fed_calendar_raw
         freshness:
           warn_after: {count: 168, period: hour}

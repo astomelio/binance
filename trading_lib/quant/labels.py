@@ -59,6 +59,8 @@ def build_labeled_rows(
         "long_short_account_ratio",
         "buy_sell_ratio",
         "fear_greed_value",
+        "btc_dominance",
+        "fed_funds_rate",
         "session_overlap_score",
         "liquidity_event_score",
         "cross_exchange_spread_bps",
@@ -88,6 +90,17 @@ def build_labeled_rows(
         "tf1d_momentum_score",
         "tf1d_basis_bps",
         "tf1d_funding_rate_8h",
+        # Macro assets (SP500, oil)
+        "sp500_close",
+        "oil_wti_usd",
+        # Session / market hours
+        "session_us_open",
+        "session_china_open",
+        "session_us_or_china_open",
+        "earnings_window",
+        # Mean reversion
+        "price_zscore_24h",
+        "price_deviation_pct_24h",
     ]
     for symbol, rows in by_symbol.items():
         rows.sort(key=lambda x: x["event_time"])

@@ -35,6 +35,8 @@ def run_single(
     params: dict[str, Any],
     horizon: str = "4h",
     fee_percent: float = 0.04,
+    slippage_percent: float = 0.0,
+    min_quote_volume_24h: float | None = None,
     symbols: list[str] | None = None,
 ) -> ExperimentResult | None:
     """Ejecuta un backtest con una estrategia y params."""
@@ -46,6 +48,8 @@ def run_single(
         rows,
         horizon=horizon,
         fee_percent=fee_percent,
+        slippage_percent=slippage_percent,
+        min_quote_volume_24h=min_quote_volume_24h,
         compute_fn=compute_fn,
         symbols=symbols,
     )
@@ -56,6 +60,7 @@ def run_single(
         net_return_percent=r.net_return_percent,
         total_return_percent=r.total_return_percent,
         fees_percent=r.total_fees_percent,
+        slippage_percent=r.total_slippage_percent,
         trades_count=r.trades_count,
         by_symbol=r.by_symbol,
     )
@@ -66,6 +71,8 @@ def run_grid(
     strategy_id: str,
     horizon: str = "4h",
     fee_percent: float = 0.04,
+    slippage_percent: float = 0.0,
+    min_quote_volume_24h: float | None = None,
     symbols: list[str] | None = None,
     param_overrides: dict[str, list] | None = None,
     max_combos: int = 100,
@@ -81,7 +88,12 @@ def run_grid(
         combos = [combos[i] for i in range(0, len(combos), max(1, step))][:max_combos]
     results = []
     for params in combos:
-        res = run_single(rows, strategy_id, params, horizon, fee_percent, symbols)
+        res = run_single(
+            rows, strategy_id, params,
+            horizon=horizon, fee_percent=fee_percent,
+            slippage_percent=slippage_percent, min_quote_volume_24h=min_quote_volume_24h,
+            symbols=symbols,
+        )
         if res:
             results.append(res)
     return results
@@ -92,6 +104,8 @@ def run_all_strategies(
     strategy_ids: list[str] | None = None,
     horizon: str = "4h",
     fee_percent: float = 0.04,
+    slippage_percent: float = 0.0,
+    min_quote_volume_24h: float | None = None,
     symbols: list[str] | None = None,
     use_default_params: bool = True,
 ) -> list[ExperimentResult]:
@@ -105,7 +119,7 @@ def run_all_strategies(
         if not strategy:
             continue
         params = strategy.default_params if use_default_params else {}
-        res = run_single(rows, sid, params, horizon, fee_percent, symbols)
+        res = run_single(rows, sid, params, horizon, fee_percent, slippage_percent, min_quote_volume_24h, symbols)
         if res:
             results.append(res)
     return results

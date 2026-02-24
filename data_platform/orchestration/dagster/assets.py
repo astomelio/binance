@@ -129,3 +129,82 @@ def warehouse_dbt_build(context) -> MaterializeResult:
         }
     )
 
+
+@asset(
+    group_name="crypto_lake_ml",
+    deps=[warehouse_dbt_build],
+    description="Entrena modelo LightGBM con decision_features, registra en MLflow y ejecuta backtest.",
+)
+def quant_model_train(context) -> MaterializeResult:
+    """Ejecuta scripts/auto_train_eval.py (datos ya actualizados por warehouse_dbt_build)."""
+    repo_root = Path(__file__).resolve().parents[3]
+    db_path_env = os.getenv("DBT_DUCKDB_PATH", "artifacts/warehouse/crypto.duckdb")
+    db_path = str((repo_root / db_path_env).resolve()) if not Path(db_path_env).is_absolute() else db_path_env
+    script = repo_root / "scripts" / "auto_train_eval.py"
+    python_exec = Path(sys.executable).resolve()
+    cmd = [str(python_exec), str(script), "--set-champion"]
+    env = dict(os.environ)
+    env["DBT_DUCKDB_PATH"] = db_path
+    env["PYTHONPATH"] = str(repo_root)
+    result = subprocess.run(cmd, cwd=str(repo_root), capture_output=True, text=True, env=env, timeout=3600)
+    if result.returncode != 0:
+        raise RuntimeError(
+            "quant_model_train failed: "
+            f"stdout={result.stdout[-1500:]!r} "
+            f"stderr={result.stderr[-1500:]!r}"
+        )
+    report_path = repo_root / "artifacts" / "quant_model" / "auto_report.json"
+    report_data = {}
+    if report_path.exists():
+        import json
+        report_data = json.loads(report_path.read_text(encoding="utf-8"))
+    return MaterializeResult(
+        metadata={
+            "layer": "ml",
+            "script": str(script),
+            "db_path": db_path,
+            "backtest_net_pct": report_data.get("backtest", {}).get("net_return_percent"),
+            "trades_count": report_data.get("backtest", {}).get("trades_count"),
+            "stdout_tail": result.stdout[-800:],
+        }
+    )
+
+
+@asset(
+    group_name="crypto_lake_ml",
+    description="Un ciclo de la suite de agentes quant: tuning → decisión → informe → evolución (champion). Usa los datos ya cargados en DuckDB.",
+)
+def quant_suite_cycle(context) -> MaterializeResult:
+    """Ejecuta scripts/run_suite_cycle.py; persiste estado e informe en artifacts/quant_model/."""
+    repo_root = Path(__file__).resolve().parents[3]
+    db_path_env = os.getenv("DBT_DUCKDB_PATH", "artifacts/warehouse/crypto.duckdb")
+    db_path = str((repo_root / db_path_env).resolve()) if not Path(db_path_env).is_absolute() else db_path_env
+    script = repo_root / "scripts" / "run_suite_cycle.py"
+    python_exec = Path(sys.executable).resolve()
+    cmd = [str(python_exec), str(script), "--horizon", "4h", "--lookback-days", "90"]
+    env = dict(os.environ)
+    env["DBT_DUCKDB_PATH"] = db_path
+    env["PYTHONPATH"] = str(repo_root)
+    result = subprocess.run(cmd, cwd=str(repo_root), capture_output=True, text=True, env=env, timeout=3600)
+    if result.returncode != 0:
+        raise RuntimeError(
+            "quant_suite_cycle failed: "
+            f"stdout={result.stdout[-1500:]!r} "
+            f"stderr={result.stderr[-1500:]!r}"
+        )
+    state_path = repo_root / "artifacts" / "quant_model" / "suite_state.json"
+    report_data = {}
+    if state_path.exists():
+        import json
+        report_data = json.loads(state_path.read_text(encoding="utf-8"))
+    return MaterializeResult(
+        metadata={
+            "layer": "ml",
+            "script": str(script),
+            "db_path": db_path,
+            "champion_id": report_data.get("champion_id"),
+            "champion_version": report_data.get("version"),
+            "stdout_tail": result.stdout[-800:],
+        }
+    )
+

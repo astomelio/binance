@@ -9,19 +9,30 @@ from .assets import (
     gold_high_features,
     gold_low_features,
     gold_medium_features,
+    quant_model_train,
+    quant_suite_cycle,
     silver_high_transform,
     silver_low_transform,
     silver_medium_transform,
     warehouse_dbt_build,
     warehouse_raw_load,
 )
-from .jobs import crypto_lake_full_job, crypto_lake_high_job, crypto_lake_low_job, crypto_lake_medium_job
+from .jobs import (
+    crypto_lake_full_job,
+    crypto_lake_full_plus_train_job,
+    crypto_lake_high_job,
+    crypto_lake_low_job,
+    crypto_lake_medium_job,
+    quant_suite_job,
+)
 from .schedules import (
     crypto_lake_full_hourly_schedule,
+    crypto_lake_full_plus_train_weekly_schedule,
     crypto_lake_full_schedule,
     crypto_lake_high_schedule,
     crypto_lake_low_schedule,
     crypto_lake_medium_schedule,
+    quant_suite_daily_schedule,
 )
 
 base_assets = [
@@ -36,6 +47,8 @@ base_assets = [
     gold_low_features,
     warehouse_raw_load,
     warehouse_dbt_build,
+    quant_model_train,
+    quant_suite_cycle,
 ]
 resources = {}
 
@@ -57,13 +70,22 @@ except Exception:
 
 defs = Definitions(
     assets=base_assets,
-    jobs=[crypto_lake_high_job, crypto_lake_medium_job, crypto_lake_low_job, crypto_lake_full_job],
+    jobs=[
+        crypto_lake_high_job,
+        crypto_lake_medium_job,
+        crypto_lake_low_job,
+        crypto_lake_full_job,
+        crypto_lake_full_plus_train_job,
+        quant_suite_job,
+    ],
     schedules=[
         crypto_lake_high_schedule,
         crypto_lake_medium_schedule,
         crypto_lake_low_schedule,
         crypto_lake_full_schedule,
         crypto_lake_full_hourly_schedule,
+        crypto_lake_full_plus_train_weekly_schedule,
+        quant_suite_daily_schedule,
     ],
     resources=resources,
 )

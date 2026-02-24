@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from itertools import product
@@ -100,7 +101,7 @@ def _train_model(model_name: str, params: Dict):
     if model_name == "lgbm":
         if not _HAS_LGBM:
             raise RuntimeError("LightGBM unavailable (missing native dependency)")
-        return LGBMClassifier(
+        kwargs = dict(
             n_estimators=int(params.get("n_estimators", 250)),
             learning_rate=float(params.get("learning_rate", 0.05)),
             num_leaves=int(params.get("num_leaves", 31)),
@@ -110,6 +111,9 @@ def _train_model(model_name: str, params: Dict):
             random_state=42,
             verbose=-1,
         )
+        if os.environ.get("USE_GPU", "").strip().lower() in ("1", "true", "yes"):
+            kwargs["device"] = "gpu"
+        return LGBMClassifier(**kwargs)
     raise ValueError(f"Unknown model: {model_name}")
 
 
@@ -210,6 +214,8 @@ def benchmark_models_walk_forward(
             "long_short_account_ratio",
             "buy_sell_ratio",
             "fear_greed_value",
+            "btc_dominance",
+            "fed_funds_rate",
             "session_overlap_score",
             "liquidity_event_score",
         ],
@@ -221,6 +227,8 @@ def benchmark_models_walk_forward(
             "long_short_account_ratio",
             "buy_sell_ratio",
             "fear_greed_value",
+            "btc_dominance",
+            "fed_funds_rate",
             "session_overlap_score",
             "liquidity_event_score",
             "cross_exchange_spread_bps",

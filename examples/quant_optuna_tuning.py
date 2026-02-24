@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import warnings
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -159,6 +160,11 @@ def main() -> None:
     )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
+        "--use-gpu",
+        action="store_true",
+        help="Use GPU for LightGBM (LightGBM: OpenCL; set USE_GPU=1 or see docs/GPU_CUDA_SETUP.md)",
+    )
+    parser.add_argument(
         "--mlflow-uri",
         default="sqlite:///artifacts/quant_model/mlflow.db",
         help="MLflow tracking URI for local UI/logging.",
@@ -179,6 +185,9 @@ def main() -> None:
         help="Set alias 'champion' to the newly registered version.",
     )
     args = parser.parse_args()
+    use_gpu = args.use_gpu or (os.environ.get("USE_GPU", "").strip().lower() in ("1", "true", "yes"))
+    if use_gpu:
+        print("GPU enabled for LightGBM (device='gpu')")
     warnings.filterwarnings("ignore", message="X does not have valid feature names")
     optuna.logging.set_verbosity(optuna.logging.WARNING)
 
@@ -234,6 +243,8 @@ def main() -> None:
         "long_short_account_ratio",
         "buy_sell_ratio",
         "fear_greed_value",
+        "btc_dominance",
+        "fed_funds_rate",
         "session_overlap_score",
         "liquidity_event_score",
         "cross_exchange_spread_bps",
@@ -272,6 +283,8 @@ def main() -> None:
             "random_state": 42,
             "verbose": -1,
         }
+        if use_gpu:
+            params["device"] = "gpu"
         prob_threshold = trial.suggest_float("prob_threshold", 0.55, 0.75)
         policy_id = trial.suggest_categorical(
             "policy_id",
@@ -488,6 +501,8 @@ def main() -> None:
         }
         final_model_params = {k: v for k, v in best_params.items() if k in lgbm_keys}
         final_model_params.update({"random_state": args.seed, "verbose": -1})
+        if use_gpu:
+            final_model_params["device"] = "gpu"
         final_model = LGBMClassifier(**final_model_params)
         final_model.fit(X_train_final, y_train_final)
 

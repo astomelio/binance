@@ -1,6 +1,14 @@
 {{ config(materialized='table', alias='decision_features') }}
 
-with src as (
+with earnings_dates as (
+    select unnest([
+        DATE '2023-01-15', DATE '2023-04-15', DATE '2023-07-15', DATE '2023-10-15',
+        DATE '2024-01-15', DATE '2024-04-15', DATE '2024-07-15', DATE '2024-10-15',
+        DATE '2025-01-15', DATE '2025-04-15', DATE '2025-07-15', DATE '2025-10-15',
+        DATE '2026-01-15', DATE '2026-04-15', DATE '2026-07-15', DATE '2026-10-15'
+    ]) as d
+),
+src as (
     select * from {{ ref('slv_decision_features') }}
 ),
 with_microstructure as (
@@ -43,6 +51,9 @@ with_momentum as (
         -- Momentum features (3 and 12 steps back, assuming 1h intervals)
         lag(futures_last_price, 3) over (partition by symbol order by event_time) as price_3h_ago,
         lag(futures_last_price, 12) over (partition by symbol order by event_time) as price_12h_ago,
+        -- Mean reversion: rolling mean/std (24h window)
+        avg(futures_last_price) over (partition by symbol order by event_time rows between 23 preceding and current row) as price_ma_24h,
+        stddev(futures_last_price) over (partition by symbol order by event_time rows between 23 preceding and current row) as price_std_24h,
         -- Microstructure momentum: spread change
         lag(spread_bps, 1) over (partition by symbol order by event_time) as spread_bps_lag1,
         case
@@ -57,7 +68,20 @@ with_momentum as (
         case
             when lag(spread_bps, 1) over (partition by symbol order by event_time) = 0 then 0
             else spread_bps - lag(spread_bps, 1) over (partition by symbol order by event_time)
-        end as spread_momentum_bps
+        end as spread_momentum_bps,
+        -- Mean reversion: z-score and deviation from MA
+        case
+            when stddev(futures_last_price) over (partition by symbol order by event_time rows between 23 preceding and current row) > 0 then
+                (futures_last_price - avg(futures_last_price) over (partition by symbol order by event_time rows between 23 preceding and current row))
+                / stddev(futures_last_price) over (partition by symbol order by event_time rows between 23 preceding and current row)
+            else 0.0
+        end as price_zscore_24h,
+        case
+            when avg(futures_last_price) over (partition by symbol order by event_time rows between 23 preceding and current row) > 0 then
+                ((futures_last_price - avg(futures_last_price) over (partition by symbol order by event_time rows between 23 preceding and current row))
+                 / avg(futures_last_price) over (partition by symbol order by event_time rows between 23 preceding and current row)) * 100.0
+            else 0.0
+        end as price_deviation_pct_24h
     from with_microstructure
 ),
 with_forward_returns as (
@@ -107,6 +131,15 @@ with_enriched_features as (
             when date_part('hour', cast(event_time as timestamp)) >= 0 and date_part('hour', cast(event_time as timestamp)) < 7 then 0.35
             else 0.15
         end as session_overlap_score,
+        -- US market hours (9:30-16:00 ET ≈ 14:30-21:00 UTC, simplified 14-21 UTC)
+        case when date_part('hour', cast(event_time as timestamp)) >= 14 and date_part('hour', cast(event_time as timestamp)) < 21 then 1 else 0 end as session_us_open,
+        -- China market hours (9:30-15:00 CST = 1:30-7:00 UTC, simplified 1-7 UTC)
+        case when date_part('hour', cast(event_time as timestamp)) >= 1 and date_part('hour', cast(event_time as timestamp)) < 7 then 1 else 0 end as session_china_open,
+        -- Overlap US+China (rare; US 14-21, China 1-7 -> no overlap; US+Asia overlap 14-16 UTC when Asia late session)
+        case when (date_part('hour', cast(event_time as timestamp)) >= 14 and date_part('hour', cast(event_time as timestamp)) < 21)
+                  or (date_part('hour', cast(event_time as timestamp)) >= 1 and date_part('hour', cast(event_time as timestamp)) < 7) then 1 else 0 end as session_us_or_china_open,
+        -- Earnings window: within 5 days of typical US earnings cluster (risk-on/volatile)
+        case when exists (select 1 from earnings_dates e where abs(date_diff('day', cast(date_trunc('day', cast(event_time as timestamp)) as date), e.d)) <= 5) then 1 else 0 end as earnings_window,
         -- Alpha microstructure score (basis + funding + momentum composite)
         case
             when abs(basis_bps) > 10.0 then sign(-basis_bps) * 1.0
@@ -218,12 +251,18 @@ select
     fear_greed_value,
     fed_funds_rate,
     next_fed_decision_date,
+    sp500_close,
+    oil_wti_usd,
     -- Enriched features
     momentum_3,
     momentum_12,
     momentum_score,
     session_band,
     session_overlap_score,
+    session_us_open,
+    session_china_open,
+    session_us_or_china_open,
+    earnings_window,
     alpha_microstructure_score,
     liquidity_event_score,
     liquidity_event_label,
@@ -238,6 +277,8 @@ select
     depth_slope_proxy,
     order_flow_imbalance,
     spread_momentum_bps,
+    price_zscore_24h,
+    price_deviation_pct_24h,
     -- Composite alpha score (weighted blend with microstructure)
     (alpha_microstructure_score * 0.40 +
      momentum_score * 0.25 +

@@ -149,6 +149,8 @@ def main() -> None:
         "long_short_account_ratio",
         "buy_sell_ratio",
         "fear_greed_value",
+        "btc_dominance",
+        "fed_funds_rate",
         "session_overlap_score",
         "liquidity_event_score",
     ]

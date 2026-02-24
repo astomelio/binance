@@ -30,8 +30,10 @@ class ExperimentResult:
     net_return_percent: float
     total_return_percent: float
     fees_percent: float
-    trades_count: int
+    slippage_percent: float = 0.0
+    trades_count: int = 0
     by_symbol: dict[str, float] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)  # symbol_set, session_hours, etc.
 
     def to_dict(self) -> dict:
         return {
@@ -41,6 +43,7 @@ class ExperimentResult:
             "net_return_percent": self.net_return_percent,
             "total_return_percent": self.total_return_percent,
             "fees_percent": self.fees_percent,
+            "slippage_percent": self.slippage_percent,
             "trades_count": self.trades_count,
         }
 

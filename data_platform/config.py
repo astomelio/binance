@@ -37,6 +37,8 @@ class DataPlatformConfig:
         "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
     )
     fred_api_key: str = os.getenv("FRED_API_KEY", "")
+    coingecko_api_key: str = os.getenv("COINGECKO_API_KEY", "")
+    glassnode_api_key: str = os.getenv("GLASSNODE_API_KEY", "")
     onchain_provider_url: str = os.getenv("ONCHAIN_PROVIDER_URL", "")
     strict_external_sources: bool = os.getenv("STRICT_EXTERNAL_SOURCES", "false").lower() == "true"
     symbols: List[str] = field(default_factory=_resolve_symbols)

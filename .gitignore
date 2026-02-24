@@ -83,3 +83,7 @@ coverage.xml
 
 # Local data lake
 data_lake/
+
+# Artifacts (warehouse, models, MLflow, Optuna) — no subir a GitHub (límite 100 MB)
+artifacts/
+mlruns/

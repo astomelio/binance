@@ -52,7 +52,8 @@ class RealModelWrapper:
         elif model_type == "lgbm":
             if not _HAS_LGBM:
                 raise RuntimeError("LightGBM unavailable")
-            return LGBMClassifier(
+            import os
+            kwargs = dict(
                 n_estimators=int(params.get("n_estimators", 250)),
                 learning_rate=float(params.get("learning_rate", 0.05)),
                 num_leaves=int(params.get("num_leaves", 31)),
@@ -61,6 +62,9 @@ class RealModelWrapper:
                 random_state=42,
                 verbose=-1,
             )
+            if os.environ.get("USE_GPU", "").strip().lower() in ("1", "true", "yes"):
+                kwargs["device"] = "gpu"
+            return LGBMClassifier(**kwargs)
         else:
             raise ValueError(f"Unknown model type: {model_type}")
     
