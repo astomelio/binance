@@ -1,0 +1,12 @@
+2026-03-06 16:00:13 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b2061b6a-02d5-496d-84a5-311d940f096f - 10494 - LOGS_CAPTURED - Started capturing logs in process (pid: 10494).
+2026-03-06 16:00:13 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b2061b6a-02d5-496d-84a5-311d940f096f - 10494 - stock_market_ingest - STEP_START - Started execution of step "stock_market_ingest".
+2026-03-06 16:00:13 +0000 - dagster - INFO - 04_pipeline_datos_completo - b2061b6a-02d5-496d-84a5-311d940f096f - stock_market_ingest - Running stock market ingest: /usr/local/bin/python3.11 /app/data_platform/loaders/stock_market_loader.py
+2026-03-06 16:00:19 +0000 - dagster - INFO - 04_pipeline_datos_completo - b2061b6a-02d5-496d-84a5-311d940f096f - stock_market_ingest - Stock ingest complete:
+Pipeline stock_market_pipeline load step completed in 1.12 seconds
+1 load package(s) were loaded to destination duckdb and into dataset main
+The duckdb destination used duckdb:////app/artifacts/warehouse/crypto.duckdb location to store data
+Load package 1772812815.2657232 is LOADED and contains no failed jobs
+
+2026-03-06 16:00:20 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b2061b6a-02d5-496d-84a5-311d940f096f - 10494 - stock_market_ingest - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-06 16:00:20 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b2061b6a-02d5-496d-84a5-311d940f096f - 10494 - stock_market_ingest - ASSET_MATERIALIZATION - Materialized value stock_market_ingest.
+2026-03-06 16:00:20 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b2061b6a-02d5-496d-84a5-311d940f096f - 10494 - stock_market_ingest - STEP_SUCCESS - Finished execution of step "stock_market_ingest" in 6.93s.

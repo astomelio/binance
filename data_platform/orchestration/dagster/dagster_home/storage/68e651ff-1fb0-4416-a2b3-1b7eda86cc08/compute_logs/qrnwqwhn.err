@@ -1,0 +1,23 @@
+2026-03-06 13:52:38 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 68e651ff-1fb0-4416-a2b3-1b7eda86cc08 - 29544 - LOGS_CAPTURED - Started capturing logs in process (pid: 29544).
+2026-03-06 13:52:38 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 68e651ff-1fb0-4416-a2b3-1b7eda86cc08 - 29544 - quant_risk_evaluation - STEP_START - Started execution of step "quant_risk_evaluation".
+2026-03-06 13:52:39 +0000 - dagster - INFO - 08_operacion_testnet_15m - 68e651ff-1fb0-4416-a2b3-1b7eda86cc08 - quant_risk_evaluation - Running Risk Engine: /usr/local/bin/python3.11 /app/scripts/run_risk_engine.py
+2026-03-06 13:52:44 +0000 - dagster - INFO - 08_operacion_testnet_15m - 68e651ff-1fb0-4416-a2b3-1b7eda86cc08 - quant_risk_evaluation - Risk Engine complete:
+01546137404158221
+INFO:__main__:DEBUG raw_signals count: 2
+INFO:__main__:Capital peak=10000.0, current=5005.33889894, DD=0.50
+INFO:__main__:DEBUG raw_entries count: 2
+WARNING:trading_lib.risk.engine:Blocked by drawdown limit: 0.50 >= 0.15
+INFO:trading_lib.risk.engine:raw_signals count before filter: 2
+INFO:trading_lib.risk.engine:sorted_signals count after filter: 2
+INFO:trading_lib.risk.engine:DEBUG sizing for ETH-USD: conf=0.52, vol=0.05, base=250.266944947, conf_m=0.10, vol_m=0.21, final=25.00
+INFO:trading_lib.risk.engine:DEBUG sizing for BTC-USD: conf=0.51, vol=0.05, base=250.266944947, conf_m=0.10, vol_m=0.21, final=25.00
+INFO:__main__:DEBUG raw_entries count: 2 -> approved: 2
+WARNING:trading_lib.risk.engine:Blocked by drawdown limit: 0.50 >= 0.15
+INFO:trading_lib.risk.engine:raw_signals count before filter: 0
+INFO:trading_lib.risk.engine:sorted_signals count after filter: 0
+INFO:__main__:Inserted 2 raw signals
+INFO:__main__:Inserted 2 orders (Entries: 2, Exits: 0, Rebalances: 0)
+
+2026-03-06 13:52:44 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 68e651ff-1fb0-4416-a2b3-1b7eda86cc08 - 29544 - quant_risk_evaluation - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-06 13:52:44 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 68e651ff-1fb0-4416-a2b3-1b7eda86cc08 - 29544 - quant_risk_evaluation - ASSET_MATERIALIZATION - Materialized value quant_risk_evaluation.
+2026-03-06 13:52:44 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 68e651ff-1fb0-4416-a2b3-1b7eda86cc08 - 29544 - quant_risk_evaluation - STEP_SUCCESS - Finished execution of step "quant_risk_evaluation" in 5.72s.

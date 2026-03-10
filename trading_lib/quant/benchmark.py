@@ -8,12 +8,16 @@ from statistics import mean, pstdev
 import numpy as np
 from typing import Dict, List, Sequence, Tuple
 
+import warnings
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
+warnings.filterwarnings("ignore", message="X does not have valid feature names")
 
 from ..timeseries import build_walk_forward_splits
 from .labels import LabeledRow
@@ -125,11 +129,12 @@ def _simulate_from_prob(
     min_allocation: float = 0.1,
     max_allocation: float = 0.4,
     slippage_percent: float = 0.02,
+    max_drawdown_limit: float = 0.15,
 ) -> Tuple[int, float, float, float]:
-    """Simulate with allocation sizing matching production behavior.
+    """Simulate with allocation sizing matching production behavior, including Risk Engine MDD limits.
 
-    Instead of signal={-1,0,1}, allocations scale with conviction
-    between min_allocation and max_allocation.
+    Instead of signal={-1,0,1}, allocations scale with conviction.
+    If the simulated equity drops below max_drawdown_limit, trading stops (circuit breaker).
     """
     longs = prob_up >= prob_threshold
     shorts = prob_up <= (1.0 - prob_threshold)
@@ -137,36 +142,107 @@ def _simulate_from_prob(
     if not np.any(active):
         return 0, 0.0, 0.0, 0.0
 
-    alloc = np.zeros_like(prob_up, dtype=float)
-    # Scale allocation with conviction distance from threshold
-    for i in range(len(prob_up)):
-        if longs[i]:
-            strength = min((prob_up[i] - prob_threshold) / (1.0 - prob_threshold), 1.0)
-            alloc[i] = min_allocation + strength * (max_allocation - min_allocation)
-        elif shorts[i]:
-            strength = min(((1.0 - prob_threshold) - prob_up[i]) / (1.0 - prob_threshold), 1.0)
-            alloc[i] = -(min_allocation + strength * (max_allocation - min_allocation))
-
-    abs_alloc = np.abs(alloc[active])
-    gross = alloc[active] * y_return[active]
-    cost_per_trade = abs_alloc * (fee_percent + slippage_percent)
-    net = gross - cost_per_trade
-
-    wins = float(np.sum(net > 0))
-    trades = int(net.shape[0])
-    win_rate = (wins / trades) * 100.0 if trades else 0.0
-    net_sum = float(np.sum(net))
-
+    # Risk Engine variables
     eq = 1.0
     peak = 1.0
     mdd = 0.0
-    for r in net:
-        eq *= 1.0 + (float(r) / 100.0)
+    
+    net_list = []
+    
+    for i in range(len(prob_up)):
+        if not active[i]:
+            continue
+            
+        # Circuit Breaker check
+        if mdd >= max_drawdown_limit * 100:
+            # Portfolio blew up or hit the limit, stop trading for the rest of this fold
+            break
+            
+        alloc = 0.0
+        if longs[i]:
+            strength = min((prob_up[i] - prob_threshold) / (1.0 - prob_threshold), 1.0)
+            alloc = min_allocation + strength * (max_allocation - min_allocation)
+        elif shorts[i]:
+            strength = min(((1.0 - prob_threshold) - prob_up[i]) / (1.0 - prob_threshold), 1.0)
+            alloc = -(min_allocation + strength * (max_allocation - min_allocation))
+            
+        gross_trade = alloc * y_return[i]
+        cost_trade = abs(alloc) * (fee_percent + slippage_percent)
+        net_trade = gross_trade - cost_trade
+        net_list.append(net_trade)
+        
+        eq *= 1.0 + (float(net_trade) / 100.0)
         if eq > peak:
             peak = eq
         dd = ((peak - eq) / peak) * 100.0
         mdd = max(mdd, dd)
+
+    if not net_list:
+        return 0, 0.0, 0.0, 0.0
+        
+    net_array = np.array(net_list)
+    wins = float(np.sum(net_array > 0))
+    trades = len(net_list)
+    win_rate = (wins / trades) * 100.0 if trades else 0.0
+    net_sum = float(np.sum(net_array))
+
     return trades, net_sum, win_rate, mdd
+
+
+FEATURE_SETS: Dict[str, List[str]] = {
+    "core_micro": ["alpha_microstructure_score", "basis_bps", "funding_rate_8h", "sentiment_score_1h", "grok_x_sentiment_1h"],
+    "core_plus_flow": [
+        "alpha_microstructure_score",
+        "basis_bps",
+        "funding_rate_8h",
+        "long_short_account_ratio",
+        "buy_sell_ratio",
+        "sentiment_score_1h",
+        "grok_x_sentiment_1h",
+    ],
+    "full_quant": [
+        "alpha_microstructure_score",
+        "momentum_score",
+        "basis_bps",
+        "funding_rate_8h",
+        "long_short_account_ratio",
+        "buy_sell_ratio",
+        "fear_greed_value",
+        "btc_dominance",
+        "fed_funds_rate",
+        "session_overlap_score",
+        "liquidity_event_score",
+        "sentiment_score_1h",
+        "grok_x_sentiment_1h",
+    ],
+    "cross_dex_quant": [
+        "alpha_microstructure_score",
+        "momentum_score",
+        "basis_bps",
+        "funding_rate_8h",
+        "long_short_account_ratio",
+        "buy_sell_ratio",
+        "fear_greed_value",
+        "btc_dominance",
+        "fed_funds_rate",
+        "session_overlap_score",
+        "liquidity_event_score",
+        "cross_exchange_mean_diff_bps",
+        "cross_exchange_bid_ask_bps_mean",
+        "bybit_okx_delta_bps",
+        "cross_exchange_score",
+        "dex_cex_basis_bps",
+        "dex_liquidity_usd",
+        "dex_volume_24h_usd",
+        "dex_txn_imbalance_24h",
+        "dex_alpha_score",
+        "sentiment_score_1h",
+        "grok_x_sentiment_1h",
+    ],
+}
+
+# Alias for backward compatibility
+feature_sets = FEATURE_SETS
 
 
 def _param_grid(model_name: str) -> List[Dict]:
@@ -202,6 +278,7 @@ def benchmark_models_walk_forward(
     test_days: int = 14,
     step_days: int = 14,
     embargo_hours: int = 12,
+    max_drawdown_limit: float = 0.15,
 ) -> List[BenchmarkResult]:
     if not labeled_rows:
         raise ValueError("No labeled rows for benchmark")
@@ -218,53 +295,6 @@ def benchmark_models_walk_forward(
     if not splits:
         raise ValueError("No walk-forward splits generated")
 
-    feature_sets = {
-        "core_micro": ["alpha_microstructure_score", "basis_bps", "funding_rate_8h"],
-        "core_plus_flow": [
-            "alpha_microstructure_score",
-            "basis_bps",
-            "funding_rate_8h",
-            "long_short_account_ratio",
-            "buy_sell_ratio",
-        ],
-        "full_quant": [
-            "alpha_microstructure_score",
-            "momentum_score",
-            "basis_bps",
-            "funding_rate_8h",
-            "long_short_account_ratio",
-            "buy_sell_ratio",
-            "fear_greed_value",
-            "btc_dominance",
-            "fed_funds_rate",
-            "session_overlap_score",
-            "liquidity_event_score",
-        ],
-        "cross_dex_quant": [
-            "alpha_microstructure_score",
-            "momentum_score",
-            "basis_bps",
-            "funding_rate_8h",
-            "long_short_account_ratio",
-            "buy_sell_ratio",
-            "fear_greed_value",
-            "btc_dominance",
-            "fed_funds_rate",
-            "session_overlap_score",
-            "liquidity_event_score",
-            "cross_exchange_spread_bps",
-            "cross_exchange_mean_diff_bps",
-            "cross_exchange_bid_ask_bps_mean",
-            "bybit_okx_delta_bps",
-            "cross_exchange_score",
-            "dex_cex_basis_bps",
-            "dex_liquidity_usd",
-            "dex_volume_24h_usd",
-            "dex_txn_imbalance_24h",
-            "dex_alpha_score",
-        ],
-    }
-
     results: List[BenchmarkResult] = []
     model_names = ["logreg", "rf", "lgbm"]
     if not _HAS_LGBM:
@@ -273,7 +303,7 @@ def benchmark_models_walk_forward(
     # Pre-compute datetimes once for speed.
     ts = np.array([_parse_iso(r["event_time"]) for r in samples], dtype=object)
 
-    for feature_set_name, feature_names in feature_sets.items():
+    for feature_set_name, feature_names in FEATURE_SETS.items():
         X_all = pd.DataFrame(
             [{f: float(r.get(f, 0.0) or 0.0) for f in feature_names} for r in samples],
             columns=feature_names,
@@ -315,6 +345,7 @@ def benchmark_models_walk_forward(
                             y_return=y_ret_test,
                             prob_threshold=float(prob_th),
                             fee_percent=fee_percent,
+                            max_drawdown_limit=max_drawdown_limit,
                         )
                         fold_metrics.append(
                             BenchmarkFoldMetric(
@@ -346,8 +377,13 @@ def benchmark_models_walk_forward(
                     annualized_vol = std_net * np.sqrt(periods_per_year / (test_days * 24)) if std_net > 0 else 0.01
                     sharpe_annualized = (annualized_return / annualized_vol) if annualized_vol > 0 else 0.0
                     
-                    # Objective: Sharpe - penalty for drawdown and instability
-                    objective = sharpe_annualized - (0.20 * mean_mdd) - (0.10 * std_net / mean_net if mean_net > 0 else 0)
+                    # Objective: Sharpe - very heavy penalty for drawdown and instability
+                    # We penalize MDD by a factor of 1.0 (instead of 0.5) to prioritize drawdown minimization
+                    objective = sharpe_annualized - (1.0 * mean_mdd) - (0.15 * std_net / mean_net if mean_net > 0 else 0)
+                    
+                    # Hard circuit breaker for the search: if MDD > 12%, disqualify the candidate
+                    if mean_mdd > 12.0:
+                        objective -= 200.0
 
                     params_with_threshold = dict(params)
                     params_with_threshold["prob_threshold"] = float(prob_th)

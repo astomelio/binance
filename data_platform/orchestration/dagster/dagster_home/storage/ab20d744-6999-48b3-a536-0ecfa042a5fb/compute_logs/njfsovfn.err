@@ -1,0 +1,30 @@
+2026-03-06 11:37:15 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - ab20d744-6999-48b3-a536-0ecfa042a5fb - 31038 - LOGS_CAPTURED - Started capturing logs in process (pid: 31038).
+2026-03-06 11:37:15 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - ab20d744-6999-48b3-a536-0ecfa042a5fb - 31038 - quant_risk_evaluation - STEP_START - Started execution of step "quant_risk_evaluation".
+2026-03-06 11:37:15 +0000 - dagster - INFO - 08_operacion_testnet_15m - ab20d744-6999-48b3-a536-0ecfa042a5fb - quant_risk_evaluation - Running Risk Engine: /usr/local/bin/python3.11 /app/scripts/run_risk_engine.py
+2026-03-06 11:37:15 +0000 - dagster - ERROR - 08_operacion_testnet_15m - ab20d744-6999-48b3-a536-0ecfa042a5fb - 31038 - quant_risk_evaluation - STEP_FAILURE - Execution of step "quant_risk_evaluation" failed.
+
+dagster._core.errors.DagsterExecutionStepExecutionError: Error occurred while executing op "quant_risk_evaluation"::
+
+RuntimeError: Risk Engine failed:
+stdout=
+stderr=  File "/app/scripts/run_risk_engine.py", line 158
+    ) -> list[dict]:
+    ^
+SyntaxError: unmatched ')'
+
+
+Stack Trace:
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/utils.py", line 57, in op_execution_error_boundary
+    yield
+  File "/usr/local/lib/python3.11/site-packages/dagster/_utils/__init__.py", line 394, in iterate_with_context
+    next_output = next(iterator)
+                  ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 135, in _coerce_op_compute_fn_to_iterator
+    result = invoke_compute_fn(
+             ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 115, in invoke_compute_fn
+    return fn(context, **args_to_pass) if context_arg_provided else fn(**args_to_pass)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data_platform/orchestration/dagster/assets.py", line 356, in quant_risk_evaluation
+    raise RuntimeError(f"Risk Engine failed:\nstdout={result.stdout}\nstderr={result.stderr}")
+

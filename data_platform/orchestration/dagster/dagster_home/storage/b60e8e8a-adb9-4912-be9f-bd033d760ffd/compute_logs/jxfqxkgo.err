@@ -1,0 +1,15 @@
+2026-03-06 15:39:47 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - 3651 - LOGS_CAPTURED - Started capturing logs in process (pid: 3651).
+2026-03-06 15:39:47 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - 3651 - x_account_tracking - STEP_START - Started execution of step "x_account_tracking".
+2026-03-06 15:39:47 +0000 - dagster - INFO - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - x_account_tracking - Running X Account Tracker (Grok): /usr/local/bin/python3.11 /app/ai/agents/x_tracker_agent.py
+2026-03-06 15:39:50 +0000 - dagster - INFO - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - x_account_tracking - X Account Tracking complete:
+WARNING:__main__:XAI_API_KEY no encontrada. Generando sentimientos simulados (dummy) para el pipeline.
+INFO:__main__:Analizando actividad reciente de: @elonmusk con Grok
+INFO:__main__:Analizando actividad reciente de: @VitalikButerin con Grok
+INFO:__main__:Analizando actividad reciente de: @tier10k con Grok
+INFO:__main__:Analizando actividad reciente de: @unusual_whales con Grok
+INFO:__main__:Analizando actividad reciente de: @cz_binance con Grok
+INFO:__main__:Análisis de X completado. 5 cuentas analizadas.
+
+2026-03-06 15:39:50 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - 3651 - x_account_tracking - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-06 15:39:50 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - 3651 - x_account_tracking - ASSET_MATERIALIZATION - Materialized value x_account_tracking.
+2026-03-06 15:39:50 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - 3651 - x_account_tracking - STEP_SUCCESS - Finished execution of step "x_account_tracking" in 2.98s.

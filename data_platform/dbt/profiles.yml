@@ -5,7 +5,7 @@ crypto_trading_lakehouse:
       type: duckdb
       path: "{{ env_var('DBT_DUCKDB_PATH', 'artifacts/warehouse/crypto.duckdb') }}"
       schema: main
-      threads: 4
+      threads: 2
     prod:
       type: bigquery
       method: oauth

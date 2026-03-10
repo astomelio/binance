@@ -1,0 +1,42 @@
+2026-03-08 13:48:39 +0000 - dagster - DEBUG - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - 7156 - LOGS_CAPTURED - Started capturing logs in process (pid: 7156).
+2026-03-08 13:48:39 +0000 - dagster - DEBUG - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - 7156 - quant_model_train - STEP_START - Started execution of step "quant_model_train".
+2026-03-08 13:48:39 +0000 - dagster - INFO - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - quant_model_train - Running benchmark: /usr/local/bin/python3.11 /app/scripts/auto_train_eval.py --set-champion --horizon 4h --lookback-days 1000 --train-days 180 --test-days 30 --step-days 15
+2026-03-08 13:55:29 +0000 - dagster - INFO - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - quant_model_train - stdout (last 2000):
+
+2026-03-08 13:55:29 +0000 - dagster - INFO - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - quant_model_train - stderr (last 2000):
+e_plus_flow | Fit=13590.978 | Net=11.35% | Win=47.6% | MDD=13.4%
+  #2: rf/cross_dex_quant | Fit=13328.286 | Net=10.96% | Win=47.2% | MDD=5.9%
+  #3: logreg/full_quant | Fit=11885.774 | Net=9.94% | Win=47.6% | MDD=13.1%
+  #4: logreg/cross_dex_quant | Fit=11730.247 | Net=9.82% | Win=47.6% | MDD=13.1%
+  #5: rf/full_quant | Fit=10074.764 | Net=8.29% | Win=48.7% | MDD=7.5%
+  #6: lgbm/full_quant | Fit=8940.089 | Net=7.35% | Win=49.7% | MDD=2.6%
+  #7: lgbm/cross_dex_quant | Fit=7613.154 | Net=6.26% | Win=48.4% | MDD=6.2%
+  #8: logreg/core_micro | Fit=0.000 | Net=0.00% | Win=0.0% | MDD=0.0%
+  #9: rf/core_micro | Fit=0.000 | Net=0.00% | Win=0.0% | MDD=0.0%
+  #10: lgbm/core_micro | Fit=0.000 | Net=0.00% | Win=0.0% | MDD=0.0%
+================================================================================
+
+PROMOTING: logreg/core_plus_flow with Fit=13590.978
+2026/03/08 13:54:08 WARNING mlflow.utils.git_utils: Failed to import Git (the Git executable is probably not on your PATH), so Git SHA is not available. Error: Failed to initialize: Bad git executable.
+The git executable must be specified in one of the following ways:
+    - be included in your $PATH
+    - be set via $GIT_PYTHON_GIT_EXECUTABLE
+    - explicitly set via git.refresh(<full-path-to-git-executable>)
+
+All git commands will error until this is rectified.
+
+This initial message can be silenced or aggravated in the future by setting the
+$GIT_PYTHON_REFRESH environment variable. Use one of the following values:
+    - quiet|q|silence|s|silent|none|n|0: for no message or exception
+    - warn|w|warning|log|l|1: for a warning message (logging level CRITICAL, displayed by default)
+    - error|e|exception|raise|r|2: for a raised exception
+
+Example:
+    export GIT_PYTHON_REFRESH=quiet
+
+2026/03/08 13:55:29 WARNING mlflow.models.model: Model logged without a signature and input example. Please set `input_example` parameter when logging the model to auto infer the model signature.
+MLflow error: [Errno 13] Permission denied: '/C:'
+
+2026-03-08 13:55:29 +0000 - dagster - DEBUG - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - 7156 - quant_model_train - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 13:55:29 +0000 - dagster - DEBUG - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - 7156 - quant_model_train - ASSET_MATERIALIZATION - Materialized value quant_model_train.
+2026-03-08 13:55:29 +0000 - dagster - DEBUG - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - 7156 - quant_model_train - STEP_SUCCESS - Finished execution of step "quant_model_train" in 6m50s.

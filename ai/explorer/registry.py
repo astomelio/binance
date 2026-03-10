@@ -28,8 +28,14 @@ def list_strategies() -> list[str]:
 
 # Auto-register built-in strategies
 def _register_builtins():
-    from ai.explorer.strategies import alpha_score_strategy, heuristic_strategy, mean_reversion_strategy
+    from ai.explorer.strategies import (
+        alpha_score_strategy,
+        ensemble_strategy,
+        heuristic_strategy,
+        mean_reversion_strategy,
+    )
     register_strategy(alpha_score_strategy)
+    register_strategy(ensemble_strategy)
     register_strategy(heuristic_strategy)
     register_strategy(mean_reversion_strategy)
 

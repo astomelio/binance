@@ -1,0 +1,5 @@
+2026-03-08 12:36:15 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 3d660517-8fd6-492e-bfbd-cfacc5e5d816 - 30241 - LOGS_CAPTURED - Started capturing logs in process (pid: 30241).
+2026-03-08 12:36:15 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 3d660517-8fd6-492e-bfbd-cfacc5e5d816 - 30241 - bronze_low - STEP_START - Started execution of step "bronze_low".
+2026-03-08 12:36:20 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 3d660517-8fd6-492e-bfbd-cfacc5e5d816 - 30241 - bronze_low - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 12:36:20 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 3d660517-8fd6-492e-bfbd-cfacc5e5d816 - 30241 - bronze_low - ASSET_MATERIALIZATION - Materialized value bronze_low.
+2026-03-08 12:36:20 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 3d660517-8fd6-492e-bfbd-cfacc5e5d816 - 30241 - bronze_low - STEP_SUCCESS - Finished execution of step "bronze_low" in 5.27s.

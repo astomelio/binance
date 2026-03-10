@@ -101,6 +101,13 @@ def build_labeled_rows(
         # Mean reversion
         "price_zscore_24h",
         "price_deviation_pct_24h",
+        # Neutrality features
+        "beta_btc_24h",
+        "beta_sp500_24h",
+        "alpha_return_1h_btc",
+        "alpha_return_1h_sp500",
+        "alpha_return_4h_btc",
+        "alpha_return_24h_btc",
     ]
     for symbol, rows in by_symbol.items():
         rows.sort(key=lambda x: x["event_time"])

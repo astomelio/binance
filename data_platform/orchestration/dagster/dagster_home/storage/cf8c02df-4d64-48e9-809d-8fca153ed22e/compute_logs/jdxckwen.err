@@ -1,0 +1,107 @@
+2026-03-06 11:47:24 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - 19250 - LOGS_CAPTURED - Started capturing logs in process (pid: 19250).
+2026-03-06 11:47:24 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - 19250 - warehouse_dbt_build - STEP_START - Started execution of step "warehouse_dbt_build".
+2026-03-06 11:47:26 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:26  Running with dbt=1.8.8
+2026-03-06 11:47:26 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:26  [[33mWARNING[0m]: Deprecated functionality
+2026-03-06 11:47:26 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - The `tests` config has been renamed to `data_tests`. Please see
+2026-03-06 11:47:26 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - https://docs.getdbt.com/docs/build/data-tests#new-data_tests-syntax for more
+2026-03-06 11:47:26 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - information.
+2026-03-06 11:47:26 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:26  Registered adapter: duckdb=1.8.2
+2026-03-06 11:47:27 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:27  [[33mWARNING[0m]: Configuration paths exist in your dbt_project.yml file which do not apply to any resources.
+2026-03-06 11:47:27 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - There are 1 unused configuration paths:
+2026-03-06 11:47:28 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - - seeds.crypto_trading_lakehouse
+2026-03-06 11:47:28 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:28  Found 16 models, 18 data tests, 24 sources, 417 macros
+2026-03-06 11:47:28 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:28
+2026-03-06 11:47:28 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:28  Concurrency: 2 threads (target='local')
+2026-03-06 11:47:28 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:28
+2026-03-06 11:47:28 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:28  1 of 34 START sql view model main.br_news_sentiment ............................ [RUN]
+2026-03-06 11:47:28 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:28  2 of 34 START sql incremental model main.br_stock_prices ....................... [RUN]
+2026-03-06 11:47:29 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:29  1 of 34 OK created sql view model main.br_news_sentiment ....................... [[32mOK[0m in 0.36s]
+2026-03-06 11:47:29 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:29  3 of 34 START sql view model main.br_x_sentiment ............................... [RUN]
+2026-03-06 11:47:29 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:29  2 of 34 OK created sql incremental model main.br_stock_prices .................. [[32mOK[0m in 0.56s]
+2026-03-06 11:47:29 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:29  4 of 34 START sql table model main.fct_approved_orders ......................... [RUN]
+2026-03-06 11:47:29 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:29  3 of 34 OK created sql view model main.br_x_sentiment .......................... [[32mOK[0m in 0.32s]
+2026-03-06 11:47:29 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:29  5 of 34 START sql table model main.fct_raw_signals ............................. [RUN]
+2026-03-06 11:47:29 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:29  4 of 34 OK created sql table model main.fct_approved_orders .................... [[32mOK[0m in 0.31s]
+2026-03-06 11:47:29 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:29  6 of 34 START sql table model main.int_mlflow_runs ............................. [RUN]
+2026-03-06 11:47:29 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:29  5 of 34 OK created sql table model main.fct_raw_signals ........................ [[32mOK[0m in 0.30s]
+2026-03-06 11:47:29 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:29  7 of 34 START sql table model main.int_optuna_trials ........................... [RUN]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:29  6 of 34 OK created sql table model main.int_mlflow_runs ........................ [[32mOK[0m in 0.30s]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:29  8 of 34 START test assert_cross_exchange_snapshot_raw_historical ............... [RUN]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  8 of 34 PASS assert_cross_exchange_snapshot_raw_historical ..................... [[32mPASS[0m in 0.10s]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  9 of 34 START test assert_derivatives_flow_raw_historical ...................... [RUN]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  7 of 34 OK created sql table model main.int_optuna_trials ...................... [[32mOK[0m in 0.47s]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  10 of 34 START test assert_derivatives_snapshot_raw_historical ................. [RUN]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  9 of 34 PASS assert_derivatives_flow_raw_historical ............................ [[32mPASS[0m in 0.27s]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  10 of 34 PASS assert_derivatives_snapshot_raw_historical ....................... [[32mPASS[0m in 0.08s]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  11 of 34 START test assert_dex_snapshot_raw_historical ......................... [RUN]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  12 of 34 START test assert_fear_greed_raw_historical ........................... [RUN]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  12 of 34 PASS assert_fear_greed_raw_historical ................................. [[32mPASS[0m in 0.12s]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  11 of 34 WARN 1 assert_dex_snapshot_raw_historical ............................. [[33mWARN 1[0m in 0.14s]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  13 of 34 START test assert_market_snapshot_raw_historical ...................... [RUN]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  14 of 34 START test not_null_int_mlflow_runs_run_uuid .......................... [RUN]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  14 of 34 PASS not_null_int_mlflow_runs_run_uuid ................................ [[32mPASS[0m in 0.13s]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  15 of 34 START test unique_int_mlflow_runs_run_uuid ............................ [RUN]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  13 of 34 PASS assert_market_snapshot_raw_historical ............................ [[32mPASS[0m in 0.16s]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  16 of 34 START test not_null_int_optuna_trials_trial_id ........................ [RUN]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  16 of 34 PASS not_null_int_optuna_trials_trial_id .............................. [[32mPASS[0m in 0.15s]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  17 of 34 START test unique_int_optuna_trials_trial_id .......................... [RUN]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  15 of 34 PASS unique_int_mlflow_runs_run_uuid .................................. [[32mPASS[0m in 0.19s]
+2026-03-06 11:47:30 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:30  18 of 34 START sql incremental model main.br_macro_context ..................... [RUN]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  17 of 34 PASS unique_int_optuna_trials_trial_id ................................ [[32mPASS[0m in 0.14s]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  19 of 34 START sql incremental model main.br_market_snapshot ................... [RUN]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  19 of 34 ERROR creating sql incremental model main.br_market_snapshot .......... [[31mERROR[0m in 0.12s]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  20 of 34 SKIP test not_null_br_market_snapshot_event_time ...................... [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  21 of 34 SKIP test not_null_br_market_snapshot_symbol .......................... [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  18 of 34 OK created sql incremental model main.br_macro_context ................ [[32mOK[0m in 0.37s]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  22 of 34 SKIP relation main.slv_decision_features .............................. [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  23 of 34 SKIP test not_null_slv_decision_features_event_time ................... [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  24 of 34 SKIP test not_null_slv_decision_features_symbol ....................... [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  25 of 34 SKIP relation main.fct_decision_features .............................. [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  26 of 34 SKIP relation main.fct_liquidity_profile .............................. [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  27 of 34 SKIP relation main.fct_symbol_performance ............................. [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  28 of 34 SKIP test not_null_fct_decision_features_event_time ................... [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  29 of 34 SKIP test not_null_fct_decision_features_feature_id ................... [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  30 of 34 SKIP test not_null_fct_decision_features_symbol ....................... [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  31 of 34 SKIP test unique_fct_decision_features_feature_id ..................... [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  32 of 34 SKIP relation main.fct_anomaly_detection .............................. [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  33 of 34 SKIP relation main.fct_market_summary ................................. [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  34 of 34 SKIP relation main.fct_momentum_rankings .............................. [[33mSKIP[0m]
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  Finished running 2 view models, 5 incremental models, 9 table models, 18 data tests in 0 hours 0 minutes and 3.08 seconds (3.08s).
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  [31mCompleted with 1 error and 1 warning:[0m
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31    Runtime Error in model br_market_snapshot (models/bronze/br_market_snapshot.sql)
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - Binder Error: Referenced column "price_usd" not found in FROM clause!
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - Candidate bindings: "dex_price_usd", "pair_address", "dex_id", "chain_id", "dex_liquidity_usd"
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - LINE 102:             cast(price_usd as double) as raw_price,
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - ^
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  [33mWarning in test assert_dex_snapshot_raw_historical (tests/assert_dex_snapshot_raw_historical.sql)[0m
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  Got 1 result, configured to warn if != 0
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31    compiled code at target/compiled/crypto_trading_lakehouse/tests/assert_dex_snapshot_raw_historical.sql
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31
+2026-03-06 11:47:31 +0000 - dagster - INFO - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - warehouse_dbt_build - [0m11:47:31  Done. PASS=17 WARN=1 ERROR=1 SKIP=15 TOTAL=34
+2026-03-06 11:47:32 +0000 - dagster - ERROR - 04_pipeline_datos_completo - cf8c02df-4d64-48e9-809d-8fca153ed22e - 19250 - warehouse_dbt_build - STEP_FAILURE - Execution of step "warehouse_dbt_build" failed.
+
+dagster._core.errors.DagsterExecutionStepExecutionError: Error occurred while executing op "warehouse_dbt_build"::
+
+RuntimeError: dbt build failed (exit code 1)
+
+Stack Trace:
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/utils.py", line 57, in op_execution_error_boundary
+    yield
+  File "/usr/local/lib/python3.11/site-packages/dagster/_utils/__init__.py", line 394, in iterate_with_context
+    next_output = next(iterator)
+                  ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 135, in _coerce_op_compute_fn_to_iterator
+    result = invoke_compute_fn(
+             ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 115, in invoke_compute_fn
+    return fn(context, **args_to_pass) if context_arg_provided else fn(**args_to_pass)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data_platform/orchestration/dagster/assets.py", line 245, in warehouse_dbt_build
+    raise RuntimeError(f"dbt build failed (exit code {return_code})")
+

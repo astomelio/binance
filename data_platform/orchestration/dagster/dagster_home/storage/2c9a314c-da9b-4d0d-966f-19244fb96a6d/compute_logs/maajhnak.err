@@ -1,0 +1,5 @@
+2026-03-08 10:27:00 +0000 - dagster - DEBUG - 02_datos_medio - 2c9a314c-da9b-4d0d-966f-19244fb96a6d - 24120 - LOGS_CAPTURED - Started capturing logs in process (pid: 24120).
+2026-03-08 10:27:00 +0000 - dagster - DEBUG - 02_datos_medio - 2c9a314c-da9b-4d0d-966f-19244fb96a6d - 24120 - bronze_medium - STEP_START - Started execution of step "bronze_medium".
+2026-03-08 10:27:00 +0000 - dagster - DEBUG - 02_datos_medio - 2c9a314c-da9b-4d0d-966f-19244fb96a6d - 24120 - bronze_medium - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 10:27:00 +0000 - dagster - DEBUG - 02_datos_medio - 2c9a314c-da9b-4d0d-966f-19244fb96a6d - 24120 - bronze_medium - ASSET_MATERIALIZATION - Materialized value bronze_medium.
+2026-03-08 10:27:00 +0000 - dagster - DEBUG - 02_datos_medio - 2c9a314c-da9b-4d0d-966f-19244fb96a6d - 24120 - bronze_medium - STEP_SUCCESS - Finished execution of step "bronze_medium" in 539ms.

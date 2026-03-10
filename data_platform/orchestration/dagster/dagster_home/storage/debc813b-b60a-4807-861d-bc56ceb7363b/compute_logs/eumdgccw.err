@@ -1,0 +1,3 @@
+2026-03-07 21:23:43 +0000 - dagster - DEBUG - 07_optimizar_suite - debc813b-b60a-4807-861d-bc56ceb7363b - 3613 - LOGS_CAPTURED - Started capturing logs in process (pid: 3613).
+2026-03-07 21:23:43 +0000 - dagster - DEBUG - 07_optimizar_suite - debc813b-b60a-4807-861d-bc56ceb7363b - 3613 - quant_suite_cycle - STEP_START - Started execution of step "quant_suite_cycle".
+2026-03-07 21:23:43 +0000 - dagster - INFO - 07_optimizar_suite - debc813b-b60a-4807-861d-bc56ceb7363b - quant_suite_cycle - Running research loop: /usr/local/bin/python3.11 /app/scripts/run_suite_cycle.py --horizon 4h --lookback-days 1000 --max-cycles 10 --max-trials 500 --cycles-before-explore 2

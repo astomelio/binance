@@ -49,10 +49,10 @@ class WalkForwardSplit:
 
 def build_walk_forward_splits(
     rows: List[Dict],
-    train_days: int = 90,
-    test_days: int = 14,
-    step_days: int = 14,
-    embargo_hours: int = 12,
+    train_days: float = 90,
+    test_days: float = 14,
+    step_days: float = 14,
+    embargo_hours: float = 12,
 ) -> List[WalkForwardSplit]:
     """Create walk-forward windows with embargo to avoid look-ahead leakage."""
     if not rows:
@@ -64,6 +64,16 @@ def build_walk_forward_splits(
     max_ts = ts_rows[-1][1]
 
     splits: List[WalkForwardSplit] = []
+    total_days = (max_ts - min_ts).total_seconds() / 86400.0
+    if total_days < train_days + test_days:
+        # Fallback to smaller windows if not enough data
+        import sys
+        print(f"WARNING: Not enough data for train_days={train_days} and test_days={test_days}. Total days={total_days:.2f}. Scaling down.", file=sys.stderr)
+        train_days = max(total_days * 0.7, 0.01)
+        test_days = max(total_days * 0.2, 0.01)
+        step_days = max(test_days, 0.01)
+        embargo_hours = 0.0
+
     cursor = min_ts + timedelta(days=train_days)
 
     while cursor + timedelta(days=test_days) <= max_ts:

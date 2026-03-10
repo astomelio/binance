@@ -1,0 +1,15 @@
+2026-03-08 11:52:56 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 337c304b-350a-460c-a87b-f7732db78ede - 6881 - LOGS_CAPTURED - Started capturing logs in process (pid: 6881).
+2026-03-08 11:52:56 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 337c304b-350a-460c-a87b-f7732db78ede - 6881 - news_sentiment_analysis - STEP_START - Started execution of step "news_sentiment_analysis".
+2026-03-08 11:52:56 +0000 - dagster - INFO - 04_pipeline_datos_completo - 337c304b-350a-460c-a87b-f7732db78ede - news_sentiment_analysis - Running sentiment analysis: /usr/local/bin/python3.11 /app/ai/agents/sentiment_agent.py
+2026-03-08 11:52:58 +0000 - dagster - INFO - 04_pipeline_datos_completo - 337c304b-350a-460c-a87b-f7732db78ede - news_sentiment_analysis - Sentiment analysis complete:
+WARNING:__main__:OPENAI_API_KEY no encontrada. Generando sentimientos simulados (dummy) para que el pipeline funcione.
+ERROR:__main__:Error fetching news: Binder Error: Table "m" does not have a column named "uuid"
+
+Candidate bindings: : "_dlt_id"
+
+LINE 4:             LEFT JOIN main.news_sentiment s ON m.uuid = s.uuid
+                                                       ^
+
+2026-03-08 11:52:58 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 337c304b-350a-460c-a87b-f7732db78ede - 6881 - news_sentiment_analysis - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 11:52:58 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 337c304b-350a-460c-a87b-f7732db78ede - 6881 - news_sentiment_analysis - ASSET_MATERIALIZATION - Materialized value news_sentiment_analysis.
+2026-03-08 11:52:58 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 337c304b-350a-460c-a87b-f7732db78ede - 6881 - news_sentiment_analysis - STEP_SUCCESS - Finished execution of step "news_sentiment_analysis" in 2.13s.

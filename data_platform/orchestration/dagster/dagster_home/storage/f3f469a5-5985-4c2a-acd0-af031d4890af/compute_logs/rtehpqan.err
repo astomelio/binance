@@ -1,0 +1,15 @@
+2026-03-08 13:06:58 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - f3f469a5-5985-4c2a-acd0-af031d4890af - 17526 - LOGS_CAPTURED - Started capturing logs in process (pid: 17526).
+2026-03-08 13:06:58 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - f3f469a5-5985-4c2a-acd0-af031d4890af - 17526 - execute_pending_orders - STEP_START - Started execution of step "execute_pending_orders".
+2026-03-08 13:06:58 +0000 - dagster - INFO - 08_operacion_testnet_15m - f3f469a5-5985-4c2a-acd0-af031d4890af - execute_pending_orders - Running Order Execution: /usr/local/bin/python3.11 /app/scripts/execute_approved_orders.py
+2026-03-08 13:07:10 +0000 - dagster - INFO - 08_operacion_testnet_15m - f3f469a5-5985-4c2a-acd0-af031d4890af - execute_pending_orders - Order Execution complete:
+INFO:__main__:Found 2 PENDING orders to execute (Binance Futures Testnet).
+INFO:__main__:API conectada: http://binance-connector:8000
+INFO:__main__:[BINANCE] Executing LONG BUY 0.002 BTCUSDT (MARKET)
+INFO:__main__:[BINANCE] Orden enviada a Futures Testnet: orderId=12713372921 symbol=BTCUSDT status=NEW | Ver historial: https://testnet.binancefuture.com/futures/BTCUSDT
+ERROR:trading_lib.api_client:API Error: POST /futures/order/create -> {"detail":"APIError(code=-4120): Order type not supported for this endpoint. Please use the Algo Order API endpoints instead."}
+WARNING:__main__:[BINANCE] No se pudo colocar Stop Loss para BTCUSDT: 400 Client Error: Bad Request for url: http://binance-connector:8000/futures/order/create
+WARNING:__main__:Order below min notional for ETHUSDT (REBALANCE_SHORT): size_usd=-12.01 < MIN_NOTIONAL_USD=25.0
+
+2026-03-08 13:07:10 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - f3f469a5-5985-4c2a-acd0-af031d4890af - 17526 - execute_pending_orders - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 13:07:11 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - f3f469a5-5985-4c2a-acd0-af031d4890af - 17526 - execute_pending_orders - ASSET_MATERIALIZATION - Materialized value execute_pending_orders.
+2026-03-08 13:07:11 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - f3f469a5-5985-4c2a-acd0-af031d4890af - 17526 - execute_pending_orders - STEP_SUCCESS - Finished execution of step "execute_pending_orders" in 12.56s.

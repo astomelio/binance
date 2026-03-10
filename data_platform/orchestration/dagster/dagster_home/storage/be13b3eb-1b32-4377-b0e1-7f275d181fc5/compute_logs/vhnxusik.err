@@ -1,0 +1,6 @@
+2026-03-08 15:04:07 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - be13b3eb-1b32-4377-b0e1-7f275d181fc5 - 15473 - LOGS_CAPTURED - Started capturing logs in process (pid: 15473).
+2026-03-08 15:04:07 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - be13b3eb-1b32-4377-b0e1-7f275d181fc5 - 15473 - bronze_high - STEP_START - Started execution of step "bronze_high".
+WARNING:urllib3.connectionpool:Retrying (Retry(total=9, connect=1, read=0, redirect=None, status=None)) after connection broken by 'ReadTimeoutError("HTTPConnectionPool(host='binance-connector', port=8000): Read timed out. (read timeout=5)")': /futures/market/ticker/AXSUSDT
+2026-03-08 15:05:01 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - be13b3eb-1b32-4377-b0e1-7f275d181fc5 - 15473 - bronze_high - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 15:05:01 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - be13b3eb-1b32-4377-b0e1-7f275d181fc5 - 15473 - bronze_high - ASSET_MATERIALIZATION - Materialized value bronze_high.
+2026-03-08 15:05:01 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - be13b3eb-1b32-4377-b0e1-7f275d181fc5 - 15473 - bronze_high - STEP_SUCCESS - Finished execution of step "bronze_high" in 53.5s.

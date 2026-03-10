@@ -1,0 +1,6 @@
+2026-03-06 11:22:41 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - b432215d-b996-42ff-a937-929d46a0f2d7 - 3483 - LOGS_CAPTURED - Started capturing logs in process (pid: 3483).
+2026-03-06 11:22:41 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - b432215d-b996-42ff-a937-929d46a0f2d7 - 3483 - warehouse_raw_load - STEP_START - Started execution of step "warehouse_raw_load".
+2026-03-06 11:22:42 +0000 - dagster - INFO - 08_operacion_testnet_15m - b432215d-b996-42ff-a937-929d46a0f2d7 - warehouse_raw_load - Loaded 1390 total rows into 12 tables
+2026-03-06 11:22:42 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - b432215d-b996-42ff-a937-929d46a0f2d7 - 3483 - warehouse_raw_load - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-06 11:22:42 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - b432215d-b996-42ff-a937-929d46a0f2d7 - 3483 - warehouse_raw_load - ASSET_MATERIALIZATION - Materialized value warehouse_raw_load.
+2026-03-06 11:22:42 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - b432215d-b996-42ff-a937-929d46a0f2d7 - 3483 - warehouse_raw_load - STEP_SUCCESS - Finished execution of step "warehouse_raw_load" in 1.19s.

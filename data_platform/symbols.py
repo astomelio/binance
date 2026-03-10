@@ -6,12 +6,18 @@ from typing import List
 
 FUTURES_BASE = "https://fapi.binance.com"
 
-# Top ~20 por liquidez (fallback si API falla)
+# Top ~50 por liquidez en Futuros (Balance de volumen y seguridad)
 TOP_USDT_SYMBOLS = [
-    "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT",
-    "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "LINKUSDT", "DOTUSDT",
-    "MATICUSDT", "LTCUSDT", "UNIUSDT", "ATOMUSDT", "ETCUSDT",
-    "XLMUSDT", "APTUSDT", "ARBUSDT", "OPUSDT", "SUIUSDT",
+    # Top 1-10
+    "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "LINKUSDT", "DOTUSDT",
+    # Top 11-20
+    "MATICUSDT", "LTCUSDT", "UNIUSDT", "ATOMUSDT", "ETCUSDT", "XLMUSDT", "APTUSDT", "ARBUSDT", "OPUSDT", "SUIUSDT",
+    # Top 21-30 (Buenas altcoins de volumen)
+    "NEARUSDT", "INJUSDT", "FTMUSDT", "SANDUSDT", "MANAUSDT", "GALAUSDT", "AXSUSDT", "RNDRUSDT", "TIAUSDT", "SEIUSDT",
+    # Top 31-40 (Tendencias AI / Memes / Capas L1-L2)
+    "WLDUSDT", "PEPEUSDT", "SHIBUSDT", "FETUSDT", "AGIXUSDT", "ORDIUSDT", "STXUSDT", "LDOUSDT", "FILUSDT", "ICPUSDT",
+    # Top 41-50 (DeFi y Otras sólidas)
+    "AAVEUSDT", "MKRUSDT", "RUNEUSDT", "IMXUSDT", "SNXUSDT", "GRTUSDT", "THETAUSDT", "EOSUSDT", "NEOUSDT", "KAVAUSDT"
 ]
 
 

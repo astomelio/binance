@@ -33,16 +33,45 @@ class AllocationBacktestResult:
     equity_curve: list[float] = field(default_factory=list)
 
 
-def _compute_sharpe(period_returns: list[float]) -> float:
-    """Sharpe-like ratio from per-period returns (no annualization)."""
+def _compute_sharpe(period_returns: list[float], horizon: str = "4h") -> float:
+    """Sharpe-like ratio from per-period returns, annualized."""
     if len(period_returns) < 2:
         return 0.0
+    
     avg = sum(period_returns) / len(period_returns)
     var = sum((r - avg) ** 2 for r in period_returns) / len(period_returns)
     std = math.sqrt(var)
+    
     if std < 1e-9:
         return 0.0
-    return avg / std
+        
+    # Anualización básica: Sharpe_annual = Sharpe_period * sqrt(periods_per_year)
+    # 1h -> 24 * 365 = 8760
+    # 4h -> 6 * 365 = 2190
+    # 24h -> 365
+    periods_per_year = {"1h": 8760, "4h": 2190, "24h": 365}.get(horizon, 2190)
+    return (avg / std) * math.sqrt(periods_per_year)
+
+
+def _alloc_to_raw_signals(alloc: AllocationVector, features: dict[str, dict], event_time: str = "") -> list[dict]:
+    """Convierte AllocationVector a raw_signals para RiskEngine."""
+    raw = []
+    for symbol, frac in alloc.items():
+        if abs(frac) < 1e-6:
+            continue
+        row = features.get(symbol, {})
+        vol = float(row.get("price_deviation_pct_24h", 0) or row.get("asset_volatility_24h", 0) or 0.05)
+        if vol <= 0:
+            vol = 0.05
+        conf = min(0.99, 0.5 + abs(frac) / 2)
+        raw.append({
+            "event_time": event_time,
+            "symbol": symbol,
+            "signal_type": "LONG" if frac > 0 else "SHORT",
+            "confidence": conf,
+            "asset_volatility_24h": vol,
+        })
+    return raw
 
 
 def run_allocation_backtest(
@@ -53,19 +82,19 @@ def run_allocation_backtest(
     min_quote_volume_24h: float | None = None,
     compute_fn: Callable[[dict[str, dict], str], AllocationVector] | None = None,
     symbols: list[str] | None = None,
+    use_risk_engine: bool = True,
+    risk_engine_params: dict | None = None,
 ) -> AllocationBacktestResult:
     """
     rows: decision_features, cada fila = (event_time, symbol, alpha_score, fwd_return_*, ...)
-    horizon: 1h, 4h, 24h -> usa fwd_return_1h, fwd_return_4h, fwd_return_24h
-    fee_percent: fee por lado sobre notional (ej 0.04 = 4bps)
-    slippage_percent: coste estimado por lado sobre notional, ej 0.02
-    min_quote_volume_24h: excluir símbolos con quote_volume_24h < este valor (USD)
-    compute_fn: si None, usa compute_allocations por defecto
+    use_risk_engine=True: compute_allocations + RiskEngine (mismo flujo que live).
+    use_risk_engine=False: solo compute_fn.
     """
     label_col = {"1h": "fwd_return_1h", "4h": "fwd_return_4h", "24h": "fwd_return_24h"}.get(
         horizon, "fwd_return_4h"
     )
-    compute_fn = compute_fn or (lambda f, _: compute_allocations(f))
+    if compute_fn is None:
+        compute_fn = (lambda f, _: compute_allocations(f))
 
     by_time: dict[str, dict[str, dict]] = {}
     for r in rows:
@@ -119,9 +148,36 @@ def run_allocation_backtest(
     winning_periods = 0
     equity_curve: list[float] = [1.0]
 
+    engine = None
+    risk_capital = 10000.0
+    rp = risk_engine_params or {}
+    if use_risk_engine:
+        from trading_lib.risk.engine import RiskEngine
+        engine = RiskEngine(
+            base_capital=risk_capital,
+            max_drawdown_limit=rp.get("max_drawdown_limit", 0.15),
+            volatility_target=rp.get("volatility_target", 0.20),
+            max_position_size_pct=rp.get("max_position_size_pct", 0.20),
+            max_open_trades=rp.get("max_open_trades", 6),
+        )
+
     for ts in event_times:
         features = by_time[ts]
-        alloc = compute_fn(features, ts)
+        base_alloc = compute_fn(features, ts)
+        if use_risk_engine and engine:
+            raw_signals = _alloc_to_raw_signals(base_alloc, features, event_time=ts)
+            open_trades = len([s for s in prev_alloc if abs(prev_alloc.get(s, 0)) > 1e-6])
+            current_dd = ((peak - equity) / peak) if peak > 0 else 0.0
+            approved = engine.evaluate_signals(
+                raw_signals,
+                current_capital=risk_capital,
+                current_drawdown=current_dd,
+                open_trades=open_trades,
+            )
+            alloc = {s["symbol"]: (s["size_usd"] / risk_capital) * (1 if s["signal_type"] == "LONG" else -1)
+                     for s in approved}
+        else:
+            alloc = base_alloc
         alloc_history.append((ts, dict(alloc)))
 
         # Fees on notional change: round-trip fee * |delta| for each symbol.

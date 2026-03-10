@@ -1,9 +1,10 @@
 import os
+import time
 import logging
 from typing import Dict, Any, Optional, List
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from binance.client import Client
 from binance.exceptions import BinanceAPIException, BinanceOrderException
 from dotenv import load_dotenv
@@ -22,18 +23,26 @@ logger = logging.getLogger(__name__)
 _client_cache = None
 
 def get_binance_client() -> Client:
-    """Initialize and return Binance client (cached)"""
+    """Initialize and return Binance client (cached). Uses BINANCE_API_KEY, BINANCE_SECRET_KEY, BINANCE_TESTNET."""
     global _client_cache
     if _client_cache is None:
-        api_key = os.getenv('BINANCE_API_KEY')
-        secret_key = os.getenv('BINANCE_SECRET_KEY')
-        testnet = os.getenv('BINANCE_TESTNET', 'false').lower() == 'true'
-        
+        api_key = os.getenv("BINANCE_API_KEY")
+        secret_key = os.getenv("BINANCE_SECRET_KEY")
+        testnet = os.getenv("BINANCE_TESTNET", "false").lower() == "true"
+
         if not api_key or not secret_key:
             raise ValueError("BINANCE_API_KEY and BINANCE_SECRET_KEY must be set")
-        
+
         _client_cache = Client(api_key, secret_key, testnet=testnet)
-    
+        # Sync timestamp with Binance server (avoids -1021 in containers with wrong clock)
+        try:
+            res = _client_cache.futures_time() if testnet else _client_cache.get_server_time()
+            server_ms = res.get("serverTime", 0) if isinstance(res, dict) else 0
+            if server_ms:
+                _client_cache.timestamp_offset = int(server_ms) - int(time.time() * 1000)
+        except Exception as e:
+            logger.warning("Could not sync Binance server time: %s", e)
+
     return _client_cache
 
 # Pydantic models for request/response validation
@@ -55,6 +64,7 @@ class FuturesOrderRequest(BaseModel):
     position_side: Optional[str] = None  # LONG or SHORT
     reduce_only: Optional[bool] = False
     close_position: Optional[bool] = False
+    stop_price: Optional[float] = None
 
 class SmartLimitOrderRequest(BaseModel):
     symbol: str
@@ -452,11 +462,12 @@ async def get_futures_account_balance():
         
         balances = []
         for asset in account_info['assets']:
-            if float(asset['walletBalance']) > 0 or float(asset['unrealizedProfit']) > 0:
+            up = asset.get('unRealizedProfit') or asset.get('unrealizedProfit') or 0
+            if float(asset.get('walletBalance', 0) or 0) > 0 or float(up) > 0:
                 balances.append({
                     'asset': asset['asset'],
                     'wallet_balance': asset['walletBalance'],
-                    'unrealized_profit': asset['unrealizedProfit'],
+                    'unrealized_profit': up,
                     'margin_balance': asset['marginBalance'],
                     'maint_margin': asset['maintMargin'],
                     'initial_margin': asset['initialMargin'],
@@ -481,6 +492,23 @@ async def get_futures_account_balance():
         logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail='Internal server error')
 
+@app.get("/futures/exchange-info")
+async def get_futures_exchange_info():
+    """Get futures exchange information including symbol filters"""
+    try:
+        client = get_binance_client()
+        info = client.futures_exchange_info()
+        return {
+            'status': 'success',
+            'data': info
+        }
+    except BinanceAPIException as e:
+        logger.error(f"Binance Futures API error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail='Internal server error')
+
 @app.get("/futures/positions")
 async def get_futures_positions():
     """Get futures positions"""
@@ -490,23 +518,23 @@ async def get_futures_positions():
         
         formatted_positions = []
         for position in positions:
-            if float(position['positionAmt']) != 0:  # Only show active positions
+            if float(position.get('positionAmt', 0)) != 0:  # Only show active positions
                 formatted_positions.append({
-                    'symbol': position['symbol'],
-                    'initial_margin': position['initialMargin'],
-                    'maint_margin': position['maintMargin'],
-                    'unrealized_profit': position['unrealizedProfit'],
-                    'position_initial_margin': position['positionInitialMargin'],
-                    'open_order_initial_margin': position['openOrderInitialMargin'],
-                    'leverage': position['leverage'],
-                    'isolated': position['isolated'],
-                    'entry_price': position['entryPrice'],
-                    'max_notional': position['maxNotional'],
-                    'bid_notional': position['bidNotional'],
-                    'ask_notional': position['askNotional'],
-                    'position_side': position['positionSide'],
-                    'position_amt': position['positionAmt'],
-                    'update_time': position['updateTime']
+                    'symbol': position.get('symbol', ''),
+                    'initial_margin': position.get('initialMargin', '0'),
+                    'maint_margin': position.get('maintMargin', '0'),
+                    'unrealized_profit': position.get('unRealizedProfit') or position.get('unrealizedProfit', '0'),
+                    'position_initial_margin': position.get('positionInitialMargin', '0'),
+                    'open_order_initial_margin': position.get('openOrderInitialMargin', '0'),
+                    'leverage': position.get('leverage', '1'),
+                    'isolated': position.get('isolated', False),
+                    'entry_price': position.get('entryPrice', '0'),
+                    'max_notional': position.get('maxNotional', '0'),
+                    'bid_notional': position.get('bidNotional', '0'),
+                    'ask_notional': position.get('askNotional', '0'),
+                    'position_side': position.get('positionSide', 'BOTH'),
+                    'position_amt': position.get('positionAmt', '0'),
+                    'update_time': position.get('updateTime', 0)
                 })
         
         return {
@@ -520,12 +548,36 @@ async def get_futures_positions():
         logger.error(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail='Internal server error')
 
+@app.get("/futures/market/orderbook/{symbol}")
+async def get_futures_orderbook(
+    symbol: str,
+    limit: int = Query(default=5, ge=1, le=100, description="Order book depth")
+):
+    """Get futures order book (bids/asks) for limit order pricing."""
+    try:
+        client = get_binance_client()
+        ob = client.futures_order_book(symbol=symbol.upper(), limit=limit)
+        return {
+            "status": "success",
+            "data": {
+                "bids": [[float(b[0]), float(b[1])] for b in ob.get("bids", [])],
+                "asks": [[float(a[0]), float(a[1])] for a in ob.get("asks", [])],
+            }
+        }
+    except BinanceAPIException as e:
+        logger.error(f"Binance Futures API error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @app.get("/futures/market/ticker/{symbol}")
 async def get_futures_ticker(symbol: str):
     """Get futures ticker information for a symbol"""
     try:
-        client = get_binance_client()
-        ticker = client.futures_ticker(symbol=symbol.upper())
+        client = await asyncio.to_thread(get_binance_client)
+        ticker = await asyncio.to_thread(client.futures_ticker, symbol=symbol.upper())
         
         return {
             'status': 'success',
@@ -601,66 +653,62 @@ async def get_futures_klines(
 
 @app.post("/futures/order/create")
 async def create_futures_order(order_request: FuturesOrderRequest):
-    """Create a new futures order"""
     try:
-        client = get_binance_client()
-        
-        # Prepare order parameters
+        order_type = order_request.order_type.upper()
+        if order_type == "MARKET" and (order_request.quantity is None or order_request.quantity <= 0):
+            raise HTTPException(status_code=400, detail="quantity required and > 0 for MARKET order")
+
         order_params = {
-            'symbol': order_request.symbol.upper(),
-            'side': order_request.side.upper(),
-            'type': order_request.order_type.upper()
+            "symbol": order_request.symbol.upper(),
+            "side": order_request.side.upper(),
+            "type": order_type,
         }
-        
-        if order_request.quantity:
-            order_params['quantity'] = order_request.quantity
-        
-        if order_request.price:
-            order_params['price'] = order_request.price
-        
+        if order_request.quantity is not None:
+            order_params["quantity"] = round(float(order_request.quantity), 8)
+        if order_request.price is not None:
+            order_params["price"] = order_request.price
         if order_request.time_in_force:
-            order_params['timeInForce'] = order_request.time_in_force.upper()
-        
+            order_params["timeInForce"] = order_request.time_in_force.upper()
         if order_request.position_side:
-            order_params['positionSide'] = order_request.position_side.upper()
-        
+            order_params["positionSide"] = order_request.position_side.upper()
         if order_request.reduce_only is not None:
-            order_params['reduceOnly'] = order_request.reduce_only
-        
+            order_params["reduceOnly"] = order_request.reduce_only
         if order_request.close_position is not None:
-            order_params['closePosition'] = order_request.close_position
-        
-        # Create the futures order
-        result = client.futures_create_order(**order_params)
-        
+            order_params["closePosition"] = order_request.close_position
+        if order_request.stop_price is not None:
+            order_params["stopPrice"] = round(float(order_request.stop_price), 8)
+
+        client = await asyncio.to_thread(get_binance_client)
+        result = await asyncio.to_thread(client.futures_create_order, **order_params)
+        r = result if isinstance(result, dict) else {}
         return {
-            'status': 'success',
-            'data': {
-                'symbol': result['symbol'],
-                'order_id': result['orderId'],
-                'client_order_id': result['clientOrderId'],
-                'price': result['price'],
-                'orig_qty': result['origQty'],
-                'executed_qty': result['executedQty'],
-                'cummulative_quote_qty': result['cummulativeQuoteQty'],
-                'status': result['status'],
-                'time_in_force': result['timeInForce'],
-                'type': result['type'],
-                'side': result['side'],
-                'position_side': result.get('positionSide', ''),
-                'reduce_only': result.get('reduceOnly', False),
-                'close_position': result.get('closePosition', False),
-                'activate_price': result.get('activatePrice', ''),
-                'price_rate': result.get('priceRate', ''),
-                'update_time': result['updateTime'],
-                'working_type': result.get('workingType', ''),
-                'price_protect': result.get('priceProtect', False),
-                'orig_type': result.get('origType', ''),
-                'price_match': result.get('priceMatch', ''),
-                'self_trade_prevention_mode': result.get('selfTradePreventionMode', ''),
-                'good_till_date': result.get('goodTillDate', ''),
-                'time': result['time']
-            }
+            "status": "success",
+            "data": {
+                "symbol": r.get("symbol", ""),
+                "order_id": r.get("orderId"),
+                "client_order_id": r.get("clientOrderId", ""),
+                "price": r.get("price", "0"),
+                "orig_qty": r.get("origQty", "0"),
+                "executed_qty": r.get("executedQty", "0"),
+                "cummulative_quote_qty": r.get("cummulativeQuoteQty", "0"),
+                "status": r.get("status", ""),
+                "time_in_force": r.get("timeInForce", ""),
+                "type": r.get("type", ""),
+                "side": r.get("side", ""),
+                "position_side": r.get("positionSide", ""),
+                "reduce_only": r.get("reduceOnly", False),
+                "close_position": r.get("closePosition", False),
+                "activate_price": r.get("activatePrice", ""),
+                "price_rate": r.get("priceRate", ""),
+                "update_time": r.get("updateTime"),
+                "working_type": r.get("workingType", ""),
+                "price_protect": r.get("priceProtect", False),
+                "orig_type": r.get("origType", ""),
+                "price_match": r.get("priceMatch", ""),
+                "self_trade_prevention_mode": r.get("selfTradePreventionMode", ""),
+                "good_till_date": r.get("goodTillDate", ""),
+                "time": r.get("time"),
+            },
         }
     except BinanceAPIException as e:
         logger.error(f"Binance Futures API error: {e}")
@@ -1613,7 +1661,7 @@ async def start_training(request: TrainRequest):
     command = [
         venv_python, 'examples/quant_optuna_tuning.py',
         '--trials', str(request.trials),
-        '--mlflow-uri', f'sqlite:///{project_root}/artifacts/quant_model/mlflow.db',
+        '--mlflow-uri', os.environ.get('MLFLOW_TRACKING_URI', f'sqlite:///{project_root}/artifacts/quant_model/mlflow_v2.db'),
         '--mlflow-experiment', request.experiment_name
     ]
     
@@ -1844,8 +1892,661 @@ async def cancel_job(job_id: str):
         raise HTTPException(status_code=404, detail="Job not found")
 
 # ============================================================================
+# AGENTS — quant agent suite endpoints
+# ============================================================================
+
+class SuiteCycleRequest(BaseModel):
+    horizon: str = "4h"
+    lookback_days: int = 0
+    optimize: bool = False
+    use_champion: bool = True
+    max_trials: int = 400
+
+class ResearchLoopRequest(BaseModel):
+    horizon: str = "4h"
+    lookback_days: int = 0
+    max_cycles: int = 30
+    cycles_before_explore: int = 3
+    stop_on_promote: bool = False
+    optimize: bool = True
+    use_champion: bool = True
+    max_trials: int = 400
+
+
+def _get_project_root() -> str:
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+
+def _load_suite_data(db_path: str, horizon: str, lookback_days: int, use_champion: bool):
+    """Load decision_features and optionally enrich with champion alpha_score."""
+    import sys
+    project_root = _get_project_root()
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+
+    from ai.data.loader import load_decision_features
+    from datetime import datetime, timedelta, timezone
+
+    end_dt = datetime.now(timezone.utc)
+    if lookback_days <= 0:
+        start_str = end_str = None
+    else:
+        start_str = (end_dt - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+        end_str = end_dt.strftime("%Y-%m-%d")
+
+    rows = load_decision_features(
+        db_path=db_path, horizon=horizon,
+        label_not_null=True, start=start_str, end=end_str,
+    )
+    if not rows or len(rows) < 200:
+        raise ValueError(f"Insufficient data: {len(rows) if rows else 0} rows (need >=200)")
+
+    if use_champion:
+        mlflow_uri = os.environ.get('MLFLOW_TRACKING_URI', f"sqlite:///{os.path.join(_get_project_root(), 'artifacts', 'quant_model', 'mlflow_v2.db')}")
+        from ai.inference.champion_loader import enrich_rows_with_champion
+        rows = enrich_rows_with_champion(
+            rows, model_uri="models:/quant_alpha_entry_lgbm@champion",
+            mlflow_tracking_uri=mlflow_uri,
+        )
+    return rows
+
+
+@app.post("/agents/suite-cycle")
+async def run_suite_cycle_endpoint(request: SuiteCycleRequest):
+    """Run one agent suite cycle (tuning -> decision -> report -> evolution)."""
+    import uuid
+    from datetime import datetime as dt
+
+    job_id = str(uuid.uuid4())[:8]
+    project_root = _get_project_root()
+    db_path = os.path.abspath(get_duckdb_path())
+
+    with _job_lock:
+        _background_jobs[job_id] = {
+            'type': 'suite-cycle', 'status': 'starting',
+            'horizon': request.horizon, 'optimize': request.optimize,
+            'created_at': dt.now().isoformat(),
+        }
+
+    def _run():
+        import sys
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+        try:
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'loading_data'
+
+            rows = _load_suite_data(db_path, request.horizon, request.lookback_days, request.use_champion)
+
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'running'
+                _background_jobs[job_id]['rows'] = len(rows)
+
+            from ai.suite import (
+                QuantAgentSuite, ExplorationTuningAgent, OptimizerTuningAgent,
+                BacktestDecisionAgent, DefaultReportAgent, DefaultEvolutionAgent,
+            )
+
+            if request.optimize:
+                tuning = OptimizerTuningAgent(
+                    horizons=["1h", "4h"], symbol_sets=["top20", "top50", "all"],
+                    max_total_trials=request.max_trials, max_candidates=15, fee_percent=0.04,
+                )
+            else:
+                tuning = ExplorationTuningAgent(horizon=request.horizon, fee_percent=0.04, max_candidates=10)
+
+            suite = QuantAgentSuite(
+                tuning_agent=tuning,
+                decision_agent=BacktestDecisionAgent(horizon=request.horizon, fee_percent=0.04, db_path=db_path),
+                report_agent=DefaultReportAgent(promote_min_net_return=0.0, promote_min_trades=1),
+                evolution_agent=DefaultEvolutionAgent(),
+                state_path=os.path.join(project_root, 'artifacts', 'quant_model', 'suite_state.json'),
+                report_dir=os.path.join(project_root, 'artifacts', 'quant_model'),
+            )
+
+            state, report, decision = suite.run_cycle(rows)
+
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'completed'
+                _background_jobs[job_id]['result'] = {
+                    'recommendation': report.recommendation,
+                    'reason': report.recommendation_reason,
+                    'champion_id': state.champion_id,
+                    'version': state.version,
+                    'net_return': getattr(decision, 'net_return_percent', None),
+                    'trades': getattr(decision, 'trades_count', None),
+                }
+        except Exception as e:
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'error'
+                _background_jobs[job_id]['error'] = str(e)
+
+    thread = threading.Thread(target=_run)
+    thread.start()
+    return {'status': 'success', 'data': {'job_id': job_id, 'check_status': f'/actions/status/{job_id}'}}
+
+
+@app.post("/agents/research-loop")
+async def run_research_loop_endpoint(request: ResearchLoopRequest):
+    """Run research loop: cycles until good result or stagnation, then explores."""
+    import uuid
+    from datetime import datetime as dt
+
+    job_id = str(uuid.uuid4())[:8]
+    project_root = _get_project_root()
+    db_path = os.path.abspath(get_duckdb_path())
+
+    with _job_lock:
+        _background_jobs[job_id] = {
+            'type': 'research-loop', 'status': 'starting',
+            'max_cycles': request.max_cycles,
+            'created_at': dt.now().isoformat(),
+        }
+
+    def _run():
+        import sys
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+        try:
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'loading_data'
+
+            rows = _load_suite_data(db_path, request.horizon, request.lookback_days, request.use_champion)
+
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'running'
+                _background_jobs[job_id]['rows'] = len(rows)
+
+            from ai.suite import (
+                QuantAgentSuite, ExplorationTuningAgent, OptimizerTuningAgent,
+                BacktestDecisionAgent, DefaultReportAgent, DefaultEvolutionAgent,
+                run_research_loop,
+            )
+
+            if request.optimize:
+                tuning = OptimizerTuningAgent(
+                    horizons=["1h", "4h"], symbol_sets=["top20", "top50", "all"],
+                    max_total_trials=request.max_trials, max_candidates=15, fee_percent=0.04,
+                )
+            else:
+                tuning = ExplorationTuningAgent(horizon=request.horizon, fee_percent=0.04, max_candidates=10)
+
+            suite = QuantAgentSuite(
+                tuning_agent=tuning,
+                decision_agent=BacktestDecisionAgent(horizon=request.horizon, fee_percent=0.04, db_path=db_path),
+                report_agent=DefaultReportAgent(promote_min_net_return=0.0, promote_min_trades=1),
+                evolution_agent=DefaultEvolutionAgent(),
+                state_path=os.path.join(project_root, 'artifacts', 'quant_model', 'suite_state.json'),
+                report_dir=os.path.join(project_root, 'artifacts', 'quant_model'),
+            )
+
+            def on_explore(suite_ref, state, report, research_state):
+                if not request.optimize:
+                    return
+                r = research_state.exploration_round
+                from ai.suite import OptimizerTuningAgent as OTA
+                suite_ref.tuning_agent = OTA(
+                    horizons=["1h", "4h", "24h"] if r >= 1 else ["1h", "4h"],
+                    symbol_sets=["top20", "top50", "all"],
+                    max_total_trials=min(request.max_trials * (r + 2), 1200),
+                    max_candidates=20, fee_percent=0.04,
+                )
+                with _job_lock:
+                    _background_jobs[job_id]['exploration_round'] = r
+
+            state, report, research_state, cycles = run_research_loop(
+                suite, rows,
+                max_cycles=request.max_cycles,
+                cycles_before_explore=request.cycles_before_explore,
+                stop_on_promote=request.stop_on_promote,
+                on_explore=on_explore if request.optimize else None,
+                state_path=os.path.join(project_root, 'artifacts', 'quant_model', 'suite_state.json'),
+                research_state_path=os.path.join(project_root, 'artifacts', 'quant_model', 'research_state.json'),
+            )
+
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'completed'
+                _background_jobs[job_id]['result'] = {
+                    'cycles_executed': cycles,
+                    'recommendation': report.recommendation,
+                    'reason': report.recommendation_reason,
+                    'champion_id': state.champion_id,
+                    'version': state.version,
+                    'research_mode': research_state.mode,
+                    'cycles_without_improvement': research_state.cycles_without_improvement,
+                    'exploration_round': research_state.exploration_round,
+                }
+        except Exception as e:
+            with _job_lock:
+                _background_jobs[job_id]['status'] = 'error'
+                _background_jobs[job_id]['error'] = str(e)
+
+    thread = threading.Thread(target=_run)
+    thread.start()
+    return {'status': 'success', 'data': {'job_id': job_id, 'check_status': f'/actions/status/{job_id}'}}
+
+
+@app.get("/agents/state")
+async def get_agent_state():
+    """Current suite state + research state (from disk)."""
+    import json as _json
+    project_root = _get_project_root()
+    artifacts = os.path.join(project_root, 'artifacts', 'quant_model')
+
+    suite_state = {}
+    suite_path = os.path.join(artifacts, 'suite_state.json')
+    if os.path.exists(suite_path):
+        with open(suite_path, 'r') as f:
+            suite_state = _json.load(f)
+
+    research_state = {}
+    research_path = os.path.join(artifacts, 'research_state.json')
+    if os.path.exists(research_path):
+        with open(research_path, 'r') as f:
+            research_state = _json.load(f)
+
+    report = {}
+    report_path = os.path.join(artifacts, 'suite_report.json')
+    if os.path.exists(report_path):
+        with open(report_path, 'r') as f:
+            report = _json.load(f)
+
+    return {
+        'status': 'success',
+        'data': {
+            'suite_state': suite_state,
+            'research_state': research_state,
+            'latest_report': report,
+        }
+    }
+
+
+@app.get("/agents/champion")
+async def get_champion_info():
+    """Current MLflow champion model info."""
+    try:
+        import sys
+        import mlflow
+        project_root = _get_project_root()
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+            
+        mlflow_uri = os.environ.get('MLFLOW_TRACKING_URI', f"sqlite:///{os.path.join(project_root, 'artifacts', 'quant_model', 'mlflow_v2.db')}")
+        mlflow.set_tracking_uri(mlflow_uri)
+        client = mlflow.MlflowClient()
+        mv = client.get_model_version_by_alias("quant_alpha_entry_lgbm", "champion")
+        run = client.get_run(mv.run_id)
+        return {
+            'status': 'success',
+            'data': {
+                'champion': {
+                    'version': mv.version,
+                    'status': mv.status,
+                    'run_id': mv.run_id,
+                    'creation_timestamp': mv.creation_timestamp,
+                    'metrics': dict(list(run.data.metrics.items())[:10]),
+                    'params': dict(list(run.data.params.items())[:10]),
+                }
+            }
+        }
+    except Exception as e:
+        return {'status': 'success', 'data': {'champion': None, 'message': str(e)}}
+
+
+# ============================================================================
 # SERVER INFO
 # ============================================================================
+
+class ChatQuery(BaseModel):
+    query: str
+
+@app.post("/agent/chat")
+async def agent_chat(request: ChatQuery):
+    """Chat with the system AI Agent"""
+    try:
+        from langchain_openai import ChatOpenAI
+        from langchain_core.messages import HumanMessage, SystemMessage
+        import duckdb
+        import mlflow
+        
+        # Use a dummy response if no key is found, so it "works" for testing
+        api_key = os.getenv('OPENAI_API_KEY')
+        
+        # Gather basic context
+        db_path = get_duckdb_path()
+        stats_msg = "Database not found."
+        if os.path.exists(db_path):
+            conn = duckdb.connect(db_path, read_only=True)
+            tables = [t[0] for t in conn.execute("SHOW TABLES").fetchall()]
+            stats_msg = f"Database has {len(tables)} tables: {', '.join(tables[:5])}..."
+            conn.close()
+            
+        project_root = _get_project_root()
+        mlflow_uri = os.environ.get('MLFLOW_TRACKING_URI', f"sqlite:///{os.path.join(project_root, 'artifacts', 'quant_model', 'mlflow_v2.db')}")
+        champion_msg = "No MLflow DB found."
+        
+        try:
+            mlflow.set_tracking_uri(mlflow_uri)
+            client = mlflow.MlflowClient()
+            try:
+                mv = client.get_model_version_by_alias("quant_alpha_entry_lgbm", "champion")
+                run = client.get_run(mv.run_id)
+                ret = run.data.metrics.get('mean_net_return_percent', 'N/A')
+                champion_msg = f"El mejor modelo actual es la versión {mv.version} con un retorno esperado de {ret}%."
+            except:
+                champion_msg = "Aún no se ha encontrado un modelo campeón."
+        except Exception as e:
+            logger.warning(f"No se pudo acceder a MLflow: {e}")
+                
+        if not api_key:
+            # Fallback local response if no OpenAI key is configured yet
+            if "mejor modelo" in request.query.lower() or "retorno" in request.query.lower():
+                response_text = champion_msg
+            elif "tablas" in request.query.lower() or "datos" in request.query.lower():
+                response_text = stats_msg
+            else:
+                response_text = "Modo de simulación del agente (OPENAI_API_KEY no configurada). Contexto actual: " + champion_msg
+        else:
+            system_prompt = f"""You are the Binance Quant AI Assistant. 
+Respond in Spanish.
+System state:
+- Database: {stats_msg}
+- Models: {champion_msg}
+
+Answer the user's query concisely and helpfully based on this context."""
+
+            chat = ChatOpenAI(temperature=0, openai_api_key=api_key)
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=request.query)
+            ]
+            response = chat.invoke(messages)
+            response_text = response.content
+        
+        return {
+            'status': 'success',
+            'data': {
+                'response': response_text
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error in AI agent: {e}")
+        return {"status": "error", "message": str(e)}
+
+# ============================================================================
+# TESTNET MONITOR (balance + posiciones en tiempo real)
+# ============================================================================
+
+def _get_bot_operations(db_path: str) -> dict:
+    """Agregados de operaciones del bot: fct_order_history (ejecutadas) + fct_approved_orders (pendientes)."""
+    if not os.path.exists(db_path):
+        return {"total": 0, "by_status": {}, "by_signal_type": {}, "by_model": {}, "last_10": [], "last_failures": [], "total_pnl_usdt": 0.0, "win_rate_pct": 0.0, "risk_rejected_total": 0}
+    try:
+        conn = duckdb.connect(db_path, read_only=True)
+        tables = [t[0] for t in conn.execute("SHOW TABLES").fetchall()]
+        # fct_order_history: operaciones ya ejecutadas/fallidas (no se borran)
+        # fct_approved_orders: pendientes actuales (se sobrescribe cada ciclo)
+        by_status: dict = {}
+        by_signal: dict = {}
+        by_model: dict = {}
+        total_history = 0
+        total_pnl_usdt = 0.0
+        win_rate_pct = 0.0
+        risk_rejected_total = 0
+
+        if "fct_risk_cycle_stats" in tables:
+            try:
+                row = conn.execute("SELECT COALESCE(SUM(rejected_count), 0) FROM fct_risk_cycle_stats").fetchone()
+                risk_rejected_total = int(row[0]) if row else 0
+            except Exception:
+                pass
+
+        if "fct_order_history" in tables:
+            total_history = conn.execute("SELECT COUNT(*) FROM fct_order_history").fetchone()[0]
+            for row in conn.execute("SELECT status, COUNT(*) FROM fct_order_history GROUP BY status").fetchall():
+                by_status[row[0] or "NULL"] = by_status.get(row[0], 0) + row[1]
+            for row in conn.execute("SELECT signal_type, COUNT(*) FROM fct_order_history GROUP BY signal_type").fetchall():
+                by_signal[row[0] or "NULL"] = by_signal.get(row[0], 0) + row[1]
+            try:
+                for row in conn.execute(
+                    "SELECT COALESCE(model_id, 'champion') as m, COUNT(*) FROM fct_order_history GROUP BY m"
+                ).fetchall():
+                    by_model[row[0]] = by_model.get(row[0], 0) + row[1]
+            except Exception:
+                by_model["quant_alpha_entry_lgbm@champion"] = total_history
+            try:
+                row = conn.execute("SELECT COALESCE(SUM(realized_pnl), 0) FROM fct_order_history WHERE realized_pnl IS NOT NULL").fetchone()
+                total_pnl_usdt = float(row[0]) if row and row[0] is not None else 0.0
+            except Exception:
+                pass
+            try:
+                rows = conn.execute(
+                    "SELECT COUNT(*), SUM(CASE WHEN realized_pnl > 0 THEN 1 ELSE 0 END) FROM fct_order_history WHERE realized_pnl IS NOT NULL AND status = 'EXECUTED'"
+                ).fetchone()
+                if rows and rows[0] and rows[0] > 0:
+                    win_rate_pct = round(100.0 * (rows[1] or 0) / rows[0], 1)
+            except Exception:
+                pass
+        total_pending = 0
+        if "fct_approved_orders" in tables:
+            total_pending = conn.execute("SELECT COUNT(*) FROM fct_approved_orders WHERE status = 'PENDING'").fetchone()[0]
+            by_status["PENDING"] = by_status.get("PENDING", 0) + total_pending
+        total = total_history + total_pending
+        last_10 = []
+        last_failures = []
+        try:
+            if "fct_order_history" in tables:
+                cols = [d[0] for d in conn.execute("DESCRIBE fct_order_history").fetchall()]
+                last_10 = [
+                    dict(zip(cols, r))
+                    for r in conn.execute(
+                        "SELECT * FROM fct_order_history ORDER BY event_time DESC LIMIT 10"
+                    ).fetchall()
+                ]
+                try:
+                    last_failures = [
+                        dict(zip(cols, r))
+                        for r in conn.execute(
+                            "SELECT * FROM fct_order_history WHERE status IN ('FAILED','FAILED_INVALID_QTY','FAILED_BELOW_MIN') ORDER BY event_time DESC LIMIT 5"
+                        ).fetchall()
+                    ]
+                except Exception:
+                    pass
+            if not last_10 and "fct_approved_orders" in tables:
+                cols = [d[0] for d in conn.execute("DESCRIBE fct_approved_orders").fetchall()]
+                last_10 = [
+                    dict(zip(cols, r))
+                    for r in conn.execute(
+                        "SELECT * FROM fct_approved_orders ORDER BY event_time DESC LIMIT 10"
+                    ).fetchall()
+                ]
+            for r in last_10 + last_failures:
+                for k, v in list(r.items()):
+                    if hasattr(v, "isoformat"):
+                        r[k] = v.isoformat() if v else ""
+        except Exception:
+            pass
+        conn.close()
+        return {
+            "total": total,
+            "by_status": by_status,
+            "by_signal_type": by_signal,
+            "by_model": by_model,
+            "last_10": last_10,
+            "last_failures": last_failures,
+            "total_pnl_usdt": total_pnl_usdt,
+            "win_rate_pct": win_rate_pct,
+            "risk_rejected_total": risk_rejected_total,
+        }
+    except Exception:
+        return {"total": 0, "by_status": {}, "by_signal_type": {}, "by_model": {}, "last_10": [], "last_failures": [], "total_pnl_usdt": 0.0, "win_rate_pct": 0.0, "risk_rejected_total": 0}
+
+
+@app.get("/monitor/data")
+async def get_monitor_data():
+    """Datos para el monitor testnet: balance, posiciones, champion, operaciones del bot."""
+    testnet = os.getenv("BINANCE_TESTNET", "false").lower() == "true"
+    data = {"testnet": testnet, "balance": None, "positions": [], "champion": None, "bot_operations": None}
+    try:
+        client = get_binance_client()
+        account = client.futures_account()
+        usdt = next((a for a in account["assets"] if a["asset"] == "USDT"), None)
+        if usdt:
+            up = usdt.get("unRealizedProfit") or usdt.get("unrealizedProfit") or 0
+            data["balance"] = {
+                "wallet_balance": float(usdt.get("walletBalance", 0) or 0),
+                "unrealized_profit": float(up),
+            }
+        data["positions"] = []
+        for p in client.futures_position_information():
+            amt = float(p["positionAmt"])
+            if amt == 0:
+                continue
+            side_display = "LONG" if amt > 0 else "SHORT"
+            up = p.get("unRealizedProfit") or p.get("unrealizedProfit") or 0
+            data["positions"].append({
+                "symbol": p["symbol"],
+                "position_side": side_display,
+                "position_amt": amt,
+                "entry_price": p["entryPrice"],
+                "unrealized_profit": float(up),
+            })
+    except Exception as e:
+        data["error"] = str(e)
+    try:
+        champ = await get_champion_info()
+        if champ.get("status") == "success" and champ.get("data", {}).get("champion"):
+            data["champion"] = champ["data"]["champion"]
+    except Exception:
+        pass
+    try:
+        db_path = get_duckdb_path()
+        if not os.path.isabs(db_path):
+            db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", db_path))
+        data["bot_operations"] = _get_bot_operations(db_path)
+    except Exception:
+        data["bot_operations"] = {"total": 0, "by_status": {}, "by_signal_type": {}, "by_model": {}, "last_10": [], "last_failures": [], "total_pnl_usdt": 0.0, "win_rate_pct": 0.0, "risk_rejected_total": 0}
+    return data
+
+
+@app.get("/monitor", response_class=HTMLResponse)
+async def monitor_page():
+    """Monitor testnet: balance y posiciones en tiempo real. Auto-refresh cada 5s."""
+    return HTMLResponse(content=_MONITOR_HTML)
+
+
+_MONITOR_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Monitor Testnet</title>
+  <style>
+    body { font-family: system-ui; margin: 2rem; background: #0f0f12; color: #e4e4e7; }
+    h1 { color: #a78bfa; }
+    .card { background: #18181b; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+    .error { color: #f87171; }
+    .ok { color: #34d399; }
+    .metric { display: inline-block; margin-right: 1.5rem; }
+    .metric-val { font-size: 1.5rem; font-weight: 600; color: #a78bfa; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.5rem; text-align: left; }
+    th { color: #a78bfa; }
+    #ts { color: #71717a; font-size: 0.9rem; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 768px) { .grid2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>Monitor Testnet Binance</h1>
+  <p id="ts">Cargando...</p>
+  <div id="content"></div>
+  <script>
+    function esc(s) { return (s == null || s === undefined) ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+    async function load() {
+      try {
+        const r = await fetch('/monitor/data');
+        const d = await r.json();
+        document.getElementById('ts').textContent = 'Última actualización: ' + new Date().toLocaleTimeString() + ' (refresh cada 5s)';
+        let html = '';
+        if (d.error) {
+          html = '<div class="card error">' + esc(d.error) + '</div>';
+        } else {
+          html += '<div class="card"><strong>Modo:</strong> ' + (d.testnet ? '<span class="ok">TESTNET</span>' : 'PRODUCCIÓN') + '</div>';
+          if (d.balance) {
+            var wb = (d.balance.wallet_balance != null) ? Number(d.balance.wallet_balance).toFixed(2) : '0.00';
+            var up = (d.balance.unrealized_profit != null) ? Number(d.balance.unrealized_profit).toFixed(2) : '0.00';
+            html += '<div class="card"><h3>Balance USDT</h3><p>Wallet: ' + wb + ' | PnL no realizado: ' + up + '</p></div>';
+          }
+          html += '<div class="card"><h3>Posiciones (' + (d.positions ? d.positions.length : 0) + ')</h3>';
+          if (d.positions && d.positions.length) {
+            html += '<table><tr><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry</th><th>PnL</th></tr>';
+            d.positions.forEach(p => {
+              var up = (p.unrealized_profit != null) ? Number(p.unrealized_profit).toFixed(2) : esc(p.unrealized_profit);
+              html += '<tr><td>' + esc(p.symbol) + '</td><td>' + esc(p.position_side) + '</td><td>' + esc(p.position_amt) + '</td><td>' + esc(p.entry_price) + '</td><td>' + up + '</td></tr>';
+            });
+            html += '</table>';
+          } else html += '<p>Sin posiciones abiertas</p>';
+          html += '</div>';
+
+          var bot = d.bot_operations || {};
+          html += '<div class="card"><h3>Operaciones del bot</h3>';
+          var pnl = (bot.total_pnl_usdt != null && !isNaN(bot.total_pnl_usdt)) ? Number(bot.total_pnl_usdt).toFixed(2) : '0.00';
+          var wr = (bot.win_rate_pct != null && !isNaN(bot.win_rate_pct)) ? Number(bot.win_rate_pct).toFixed(1) : '0.0';
+          var rej = (bot.risk_rejected_total != null) ? Number(bot.risk_rejected_total) : 0;
+          html += '<p style="margin-bottom:1rem;"><strong>Métricas:</strong> <span class="metric"><span class="metric-val">' + pnl + '</span> USDT PnL total</span>';
+          html += '<span class="metric"><span class="metric-val">' + wr + '%</span> ops positivas</span>';
+          html += '<span class="metric"><span class="metric-val">' + rej + '</span> rechazadas Risk</span></p>';
+          html += '<p><span class="metric"><span class="metric-val">' + (bot.total || 0) + '</span> total</span>';
+          if (bot.by_status && Object.keys(bot.by_status).length) {
+            Object.entries(bot.by_status).forEach(function(e) {
+              html += '<span class="metric"><span class="metric-val">' + e[1] + '</span> ' + esc(e[0]) + '</span>';
+            });
+          }
+          html += '</p>';
+          if (bot.by_model && Object.keys(bot.by_model).length) {
+            html += '<p><strong>Por modelo:</strong> ';
+            html += Object.entries(bot.by_model).map(function(e) { return esc(e[0]) + ': ' + e[1]; }).join(' | ');
+            html += '</p>';
+          }
+          if (bot.by_signal_type && Object.keys(bot.by_signal_type).length) {
+            html += '<p><strong>Por tipo:</strong> ';
+            html += Object.entries(bot.by_signal_type).map(function(e) { return esc(e[0]) + ': ' + e[1]; }).join(' | ');
+            html += '</p>';
+          }
+          if (bot.last_10 && bot.last_10.length) {
+            html += '<h4>Últimas 10 operaciones</h4><table><tr><th>Fecha</th><th>Symbol</th><th>Tipo</th><th>Size USD</th><th>PnL</th><th>Order</th><th>Status</th><th>Modelo</th></tr>';
+            bot.last_10.forEach(function(op) {
+              var ord = esc(op.order_type || 'MARKET') + (op.limit_price ? ' @' + op.limit_price : '');
+              var rpnl = (op.realized_pnl != null && op.realized_pnl !== 0) ? Number(op.realized_pnl).toFixed(2) : '-';
+              html += '<tr><td>' + esc(op.event_time) + '</td><td>' + esc(op.symbol) + '</td><td>' + esc(op.signal_type) + '</td><td>' + esc(op.size_usd) + '</td><td>' + rpnl + '</td><td>' + ord + '</td><td>' + esc(op.status) + '</td><td>' + esc(op.model_id || 'champion') + '</td></tr>';
+            });
+            html += '</table>';
+          }
+          if (bot.last_failures && bot.last_failures.length) {
+            html += '<h4 class="error">Últimas fallidas (motivo)</h4><table><tr><th>Fecha</th><th>Symbol</th><th>Tipo</th><th>Size USD</th><th>Status</th><th>Motivo</th></tr>';
+            bot.last_failures.forEach(function(op) {
+              html += '<tr><td>' + esc(op.event_time) + '</td><td>' + esc(op.symbol) + '</td><td>' + esc(op.signal_type) + '</td><td>' + esc(op.size_usd) + '</td><td>' + esc(op.status) + '</td><td style="max-width:300px;word-break:break-all">' + esc(op.error_message || '-') + '</td></tr>';
+            });
+            html += '</table>';
+          }
+          html += '</div>';
+
+          if (d.champion) html += '<div class="card"><h3>Champion</h3><p>v' + esc(d.champion.version) + ' (modelo que genera señales)</p></div>';
+        }
+        document.getElementById('content').innerHTML = html;
+      } catch (e) {
+        document.getElementById('content').innerHTML = '<div class="card error">Error: ' + esc(e.message) + '</div>';
+      }
+    }
+    load();
+    setInterval(load, 5000);
+  </script>
+</body>
+</html>
+"""
+
 
 @app.get("/server/info")
 async def get_server_info():
@@ -1866,12 +2567,16 @@ async def get_server_info():
             'api_port': 8000,
             'mlflow_port': 5001,
             'optuna_port': 8081,
+            'dagster_port': 3000,
             'endpoints': {
                 'api_docs': f'http://{local_ip}:8000/docs',
+                'monitor': f'http://{local_ip}:8000/monitor',
                 'warehouse': f'http://{local_ip}:8000/warehouse/tables',
                 'actions': f'http://{local_ip}:8000/actions/status',
+                'agents': f'http://{local_ip}:8000/agents/state',
                 'mlflow': f'http://{local_ip}:5001',
-                'optuna': f'http://{local_ip}:8081'
+                'optuna': f'http://{local_ip}:8081',
+                'dagster': f'http://{local_ip}:3000',
             }
         }
     }

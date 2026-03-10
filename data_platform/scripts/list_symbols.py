@@ -15,7 +15,7 @@ def main():
         print(f"Binance USDT perpetual: {len(symbols)} símbolos")
     else:
         import os
-        raw = os.getenv("DP_SYMBOLS", "BTCUSDT,ETHUSDT,BNBUSDT")
+        raw = os.getenv("DP_SYMBOLS", "all")
         symbols = resolve_symbols(raw)
         print(f"DP_SYMBOLS={raw} -> {len(symbols)} símbolos")
     for s in symbols:

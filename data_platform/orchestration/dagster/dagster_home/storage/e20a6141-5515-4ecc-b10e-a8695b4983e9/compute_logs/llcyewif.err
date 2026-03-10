@@ -1,0 +1,42 @@
+2026-03-07 23:31:30 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - e20a6141-5515-4ecc-b10e-a8695b4983e9 - 2865 - LOGS_CAPTURED - Started capturing logs in process (pid: 2865).
+2026-03-07 23:31:31 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - e20a6141-5515-4ecc-b10e-a8695b4983e9 - 2865 - stock_market_ingest - STEP_START - Started execution of step "stock_market_ingest".
+2026-03-07 23:31:31 +0000 - dagster - INFO - 08_operacion_testnet_15m - e20a6141-5515-4ecc-b10e-a8695b4983e9 - stock_market_ingest - Running stock market ingest: /usr/local/bin/python3.11 /app/data_platform/loaders/stock_market_loader.py
+2026-03-07 23:42:20 +0000 - dagster - ERROR - 08_operacion_testnet_15m - e20a6141-5515-4ecc-b10e-a8695b4983e9 - 2865 - stock_market_ingest - STEP_FAILURE - Execution of step "stock_market_ingest" failed.
+
+dagster._core.errors.DagsterExecutionStepExecutionError: Error occurred while executing op "stock_market_ingest"::
+
+RuntimeError: Stock ingest timed out (600s). stderr: b'DuckDB lock held, waiting 5s... (attempt 1/12)\nDuckDB lock held, waiting 5s... (attempt 2/12)\nDuckDB lock held, waiting 5s... (attempt 3/12)\nDuckDB lock held, waiting 5s... (attempt 4/12)\nDuckDB lock held, waiting 5s... (attempt 5/12)\n2026-03-07 23:39:04,736|[WARNING]|3831|139923863767936|dlt|pipeline.py|run:734|The pipeline `run` method will now load the pending load packages. The data you passed to the run function will not be extracted. In order to do that you must run the pipeline again\nDuckDB lock held, waiting 5s... (attempt 6/12)\n2026-03-07 23:39:36,839|[WARNING]|3831|139923863767936|dlt|pipeline.py|run:734|The pipeline `run` method will now load the pending load packages. The data you passed to the run function will not be extracted. In order to do that you must run the pipeline again\nDuckDB lock held, waiting 5s... (attempt 7/12)\n2026-03-07 23:39:56,424|[WARNING]|3831|139923863767936|dlt|pipeline.py|run:734|The pipeline `run` method will now load the pending load packages. The data you passed to the run function will not be extracted. In order to do that you must run the pipeline again\n2026-03-07 23:39:56,802|[WARNING]|3831|139923863767936|dlt|utils.py|verify_schema_merge_disposition:178|Table market_news has `write_disposition` set to `merge` and `merge_strategy` set to `delete-insert`, but no primary or merge keys defined.\n'
+
+Stack Trace:
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/utils.py", line 57, in op_execution_error_boundary
+    yield
+  File "/usr/local/lib/python3.11/site-packages/dagster/_utils/__init__.py", line 394, in iterate_with_context
+    next_output = next(iterator)
+                  ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 135, in _coerce_op_compute_fn_to_iterator
+    result = invoke_compute_fn(
+             ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 115, in invoke_compute_fn
+    return fn(context, **args_to_pass) if context_arg_provided else fn(**args_to_pass)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data_platform/orchestration/dagster/assets.py", line 104, in stock_market_ingest
+    raise RuntimeError(f"Stock ingest timed out (600s). stderr: {getattr(e, 'stderr', '') or ''}")
+
+The above exception occurred during handling of the following exception:
+subprocess.TimeoutExpired: Command '['/usr/local/bin/python3.11', '/app/data_platform/loaders/stock_market_loader.py']' timed out after 600 seconds
+
+Stack Trace:
+  File "/app/data_platform/orchestration/dagster/assets.py", line 100, in stock_market_ingest
+    result = subprocess.run(
+             ^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/local/lib/python3.11/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+

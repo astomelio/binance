@@ -1,0 +1,27 @@
+2026-03-06 14:22:40 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - f9a30e95-c239-49e4-90b1-e79e63b6943c - 21373 - LOGS_CAPTURED - Started capturing logs in process (pid: 21373).
+2026-03-06 14:22:40 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - f9a30e95-c239-49e4-90b1-e79e63b6943c - 21373 - warehouse_raw_load - STEP_START - Started execution of step "warehouse_raw_load".
+2026-03-06 14:22:41 +0000 - dagster - ERROR - 08_operacion_testnet_15m - f9a30e95-c239-49e4-90b1-e79e63b6943c - 21373 - warehouse_raw_load - STEP_FAILURE - Execution of step "warehouse_raw_load" failed.
+
+dagster._core.errors.DagsterExecutionStepExecutionError: Error occurred while executing op "warehouse_raw_load"::
+
+_duckdb.IOException: IO Error: Could not set lock on file "/app/artifacts/warehouse/crypto.duckdb": Conflicting lock is held in /usr/local/bin/python3.11 (PID 21229). See also https://duckdb.org/docs/stable/connect/concurrency
+
+Stack Trace:
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/utils.py", line 57, in op_execution_error_boundary
+    yield
+  File "/usr/local/lib/python3.11/site-packages/dagster/_utils/__init__.py", line 394, in iterate_with_context
+    next_output = next(iterator)
+                  ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 135, in _coerce_op_compute_fn_to_iterator
+    result = invoke_compute_fn(
+             ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 115, in invoke_compute_fn
+    return fn(context, **args_to_pass) if context_arg_provided else fn(**args_to_pass)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data_platform/orchestration/dagster/assets.py", line 167, in warehouse_raw_load
+    counts = load_bronze_to_duckdb(cfg, db_path=db_path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data_platform/loaders/bronze_to_duckdb.py", line 21, in load_bronze_to_duckdb
+    con = duckdb.connect(db_path)
+          ^^^^^^^^^^^^^^^^^^^^^^^
+

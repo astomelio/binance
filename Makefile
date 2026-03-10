@@ -16,6 +16,8 @@ help:
 	@echo "  suite-cycle      - Un ciclo suite agentes (tuning->decision->report->evolution)"
 	@echo "  suite-prender-todo - Comprobar entorno + datos y ejecutar suite"
 	@echo "  prender-full      - Datos (temporales+gold) + modelo + suite con champion (todos los datos)"
+	@echo "  paper-e2e         - Paper trading E2E (señales + ejecución). Ver docs/PATH_TO_REALITY.md"
+	@echo "  monitor-backfill   - Backfill PnL realizado desde Binance al monitor"
 	@echo "  deploy-dev  - Deploy to development stage"
 	@echo "  deploy-prod - Deploy to production stage"
 	@echo "  clean       - Clean up generated files"
@@ -120,6 +122,10 @@ auto-train-eval:
 auto-data-then-train:
 	python scripts/auto_data_then_train.py --set-champion
 
+# Backfill métricas monitor (PnL realizado desde Binance, fct_risk_cycle_stats)
+monitor-backfill:
+	python scripts/backfill_monitor_metrics.py
+
 # Suite de agentes quant: tuning -> decisión -> informe -> evolución. Ver docs/SUITE_AGENTES_QUANT.md
 suite-cycle:
 	python scripts/run_suite_cycle.py
@@ -178,7 +184,12 @@ symbols-list-all:
 	venv/bin/python -m data_platform.scripts.list_symbols --all
 
 # Warehouse backfill: years of historical data -> bronze -> DuckDB -> dbt
-# 1) Backfill bronze with ~3 years of klines (market, derivatives, flow)
+# 1) Bootstrap full history (all sources, ~3 years) - Recommended for new devices
+warehouse-bootstrap:
+	@echo "🚀 Bootstrapping full historical data (~3 years)..."
+	@venv/bin/python scripts/bootstrap_historical.py
+
+# 2) Backfill bronze with ~3 years of klines (market, derivatives, flow)
 warehouse-backfill:
 	@echo "📊 Backfilling bronze with historical data (~3 years)..."
 	@venv/bin/python -m data_platform.backfill_bronze_historical --days 1095 --interval 1h

@@ -1,0 +1,13 @@
+2026-03-06 12:52:22 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 5cb9506b-47b9-44ac-9d62-da2d5426e78e - 13874 - LOGS_CAPTURED - Started capturing logs in process (pid: 13874).
+2026-03-06 12:52:22 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 5cb9506b-47b9-44ac-9d62-da2d5426e78e - 13874 - quant_risk_evaluation - STEP_START - Started execution of step "quant_risk_evaluation".
+2026-03-06 12:52:22 +0000 - dagster - INFO - 08_operacion_testnet_15m - 5cb9506b-47b9-44ac-9d62-da2d5426e78e - quant_risk_evaluation - Running Risk Engine: /usr/local/bin/python3.11 /app/scripts/run_risk_engine.py
+2026-03-06 12:52:27 +0000 - dagster - INFO - 08_operacion_testnet_15m - 5cb9506b-47b9-44ac-9d62-da2d5426e78e - quant_risk_evaluation - Risk Engine complete:
+WARNING:__main__:Champion load failed (No module named 'trading_lib.inference'). Using alpha_score from DB if present.
+INFO:__main__:DEBUG ETH-USD: score=-0.037421370660812095
+INFO:__main__:DEBUG BTC-USD: score=-0.01546137404158221
+INFO:__main__:DEBUG raw_signals count: 0
+INFO:__main__:Inserted 0 orders (Entries: 0, Exits: 0, Rebalances: 0)
+
+2026-03-06 12:52:27 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 5cb9506b-47b9-44ac-9d62-da2d5426e78e - 13874 - quant_risk_evaluation - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-06 12:52:27 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 5cb9506b-47b9-44ac-9d62-da2d5426e78e - 13874 - quant_risk_evaluation - ASSET_MATERIALIZATION - Materialized value quant_risk_evaluation.
+2026-03-06 12:52:27 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 5cb9506b-47b9-44ac-9d62-da2d5426e78e - 13874 - quant_risk_evaluation - STEP_SUCCESS - Finished execution of step "quant_risk_evaluation" in 5.67s.

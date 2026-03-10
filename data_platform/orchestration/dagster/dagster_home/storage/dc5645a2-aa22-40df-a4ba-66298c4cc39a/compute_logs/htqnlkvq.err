@@ -1,0 +1,9 @@
+2026-03-06 15:07:43 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - 7989 - LOGS_CAPTURED - Started capturing logs in process (pid: 7989).
+2026-03-06 15:07:43 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - 7989 - execute_pending_orders - STEP_START - Started execution of step "execute_pending_orders".
+2026-03-06 15:07:44 +0000 - dagster - INFO - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - execute_pending_orders - Running Order Execution: /usr/local/bin/python3.11 /app/scripts/execute_approved_orders.py
+2026-03-06 15:07:50 +0000 - dagster - INFO - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - execute_pending_orders - Order Execution complete:
+INFO:__main__:No PENDING orders in fct_approved_orders. Run pipeline 04 -> 06 (or 09) so risk engine produces approved orders first.
+
+2026-03-06 15:07:50 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - 7989 - execute_pending_orders - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-06 15:07:51 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - 7989 - execute_pending_orders - ASSET_MATERIALIZATION - Materialized value execute_pending_orders.
+2026-03-06 15:07:51 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - 7989 - execute_pending_orders - STEP_SUCCESS - Finished execution of step "execute_pending_orders" in 7.26s.

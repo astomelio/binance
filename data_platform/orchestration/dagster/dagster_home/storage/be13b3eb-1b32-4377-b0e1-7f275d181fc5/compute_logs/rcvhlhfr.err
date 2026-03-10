@@ -1,0 +1,13 @@
+2026-03-08 15:05:08 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - be13b3eb-1b32-4377-b0e1-7f275d181fc5 - 17278 - LOGS_CAPTURED - Started capturing logs in process (pid: 17278).
+2026-03-08 15:05:08 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - be13b3eb-1b32-4377-b0e1-7f275d181fc5 - 17278 - execute_pending_orders - STEP_START - Started execution of step "execute_pending_orders".
+2026-03-08 15:05:09 +0000 - dagster - INFO - 08_operacion_testnet_15m - be13b3eb-1b32-4377-b0e1-7f275d181fc5 - execute_pending_orders - Running Order Execution: /usr/local/bin/python3.11 /app/scripts/execute_approved_orders.py
+2026-03-08 15:06:26 +0000 - dagster - INFO - 08_operacion_testnet_15m - be13b3eb-1b32-4377-b0e1-7f275d181fc5 - execute_pending_orders - Order Execution complete:
+INFO:__main__:Found 2 PENDING orders to execute (Binance Futures Testnet).
+INFO:__main__:API conectada: http://binance-connector:8000
+WARNING:__main__:Order below min notional for ETHUSDT (REBALANCE_SHORT): size_usd=-11.99 < MIN_NOTIONAL_USD=25.0
+INFO:__main__:[BINANCE] Executing REBALANCE_LONG SELL 0.002 BTCUSDT (MARKET)
+INFO:__main__:[BINANCE] Orden enviada a Futures Testnet: orderId=12715385077 symbol=BTCUSDT status=NEW | Ver historial: https://testnet.binancefuture.com/futures/BTCUSDT
+
+2026-03-08 15:06:27 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - be13b3eb-1b32-4377-b0e1-7f275d181fc5 - 17278 - execute_pending_orders - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 15:06:27 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - be13b3eb-1b32-4377-b0e1-7f275d181fc5 - 17278 - execute_pending_orders - ASSET_MATERIALIZATION - Materialized value execute_pending_orders.
+2026-03-08 15:06:27 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - be13b3eb-1b32-4377-b0e1-7f275d181fc5 - 17278 - execute_pending_orders - STEP_SUCCESS - Finished execution of step "execute_pending_orders" in 1m18s.

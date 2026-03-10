@@ -1,0 +1,6 @@
+2026-03-08 10:14:06 +0000 - dagster - DEBUG - 01_datos_cripto - f421e7ff-1f2c-4ab2-89ba-571d94d0d677 - 16951 - LOGS_CAPTURED - Started capturing logs in process (pid: 16951).
+2026-03-08 10:14:06 +0000 - dagster - DEBUG - 01_datos_cripto - f421e7ff-1f2c-4ab2-89ba-571d94d0d677 - 16951 - bronze_high - STEP_START - Started execution of step "bronze_high".
+WARNING:urllib3.connectionpool:Retrying (Retry(total=9, connect=1, read=0, redirect=None, status=None)) after connection broken by 'ReadTimeoutError("HTTPConnectionPool(host='binance-connector', port=8000): Read timed out. (read timeout=5)")': /futures/market/ticker/IMXUSDT
+2026-03-08 10:14:58 +0000 - dagster - DEBUG - 01_datos_cripto - f421e7ff-1f2c-4ab2-89ba-571d94d0d677 - 16951 - bronze_high - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 10:14:58 +0000 - dagster - DEBUG - 01_datos_cripto - f421e7ff-1f2c-4ab2-89ba-571d94d0d677 - 16951 - bronze_high - ASSET_MATERIALIZATION - Materialized value bronze_high.
+2026-03-08 10:14:58 +0000 - dagster - DEBUG - 01_datos_cripto - f421e7ff-1f2c-4ab2-89ba-571d94d0d677 - 16951 - bronze_high - STEP_SUCCESS - Finished execution of step "bronze_high" in 51.94s.

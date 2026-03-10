@@ -1,0 +1,13 @@
+telemetry:
+  enabled: false
+run_coordinator:
+  module: dagster.core.run_coordinator
+  class: QueuedRunCoordinator
+  config:
+    max_concurrent_runs: 5
+    dequeue_interval_seconds: 5
+local_artifact_storage:
+  module: dagster.core.storage.root
+  class: LocalArtifactStorage
+  config:
+    base_dir: /app/artifacts/dagster

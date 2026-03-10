@@ -3,7 +3,7 @@
 
 param(
     [Parameter(Position=0)]
-    [ValidateSet("vision-all", "vision-top", "load", "full")]
+    [ValidateSet("vision-all", "vision-top", "load", "full", "bootstrap")]
     [string]$Mode = "vision-all"
 )
 
@@ -66,10 +66,16 @@ print(f'Loaded {count} records into DuckDB')
     }
 }
 
+function Run-Bootstrap {
+    Write-Host "🚀 Bootstrapping full historical data (~3 years) from all sources..." -ForegroundColor Cyan
+    & $VenvPython scripts/bootstrap_historical.py
+}
+
 switch ($Mode) {
     "vision-all" { Run-BackfillVisionAll }
     "vision-top" { Run-BackfillVisionTop }
     "load" { Run-Load }
+    "bootstrap" { Run-Bootstrap }
     "full" {
         Run-BackfillVisionAll
         if ($LASTEXITCODE -eq 0) { Run-Load }

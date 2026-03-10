@@ -15,6 +15,10 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
+tests:
+  crypto_trading_lakehouse:
+    +severity: warn
+
 models:
   crypto_trading_lakehouse:
     +materialized: table

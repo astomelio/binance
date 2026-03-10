@@ -14,14 +14,30 @@ def load_champion_model(
 ):
     """
     Carga el modelo champion desde MLflow.
-    model_uri: ej. "models:/quant_alpha_entry_lgbm@champion"
+    model_uri: ej. "models:/quant_alpha_entry_lgbm@champion" o "models:/quant_alpha_entry@champion"
     mlflow_tracking_uri: si None, usa el ya configurado (env MLFLOW_TRACKING_URI o default local).
+    Soporta LightGBM, sklearn (RF, LogReg).
     """
-    import mlflow.lightgbm
     if mlflow_tracking_uri:
         import mlflow
         mlflow.set_tracking_uri(mlflow_tracking_uri)
-    return mlflow.lightgbm.load_model(model_uri)
+    errs = []
+    try:
+        import mlflow.lightgbm
+        return mlflow.lightgbm.load_model(model_uri)
+    except Exception as e:
+        errs.append(f"lightgbm:{e}")
+    try:
+        import mlflow.sklearn
+        return mlflow.sklearn.load_model(model_uri)
+    except Exception as e:
+        errs.append(f"sklearn:{e}")
+    try:
+        import mlflow.pyfunc
+        return mlflow.pyfunc.load_model(model_uri)
+    except Exception as e:
+        errs.append(f"pyfunc:{e}")
+    raise RuntimeError(f"No se pudo cargar {model_uri}: {'; '.join(errs)}")
 
 
 def enrich_rows_with_champion(

@@ -1,0 +1,5 @@
+[bronze][SKIP] No ONCHAIN_PROVIDER_URL. Skipping OnChain.
+Starting parallel fetch for 2 collectors...
+[bronze] fred/macro_rates: 1 rows. (Fetch: 0.97s, Write: 0.03s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/fred/macro_rates/dt=2026-03-08/hour=06/part-20260308T065413.jsonl
+[bronze] fed_calendar/decision_dates: 1 rows. (Fetch: 0.21s, Write: 0.02s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/fed_calendar/decision_dates/dt=2026-03-08/hour=06/part-20260308T065412.jsonl
+Total bronze run time: 2.55s

@@ -1,0 +1,8 @@
+2026-03-08 15:37:03 +0000 - dagster - DEBUG - 01_datos_cripto - a567030f-0141-4ed0-989f-657f477c05ba - 7171 - LOGS_CAPTURED - Started capturing logs in process (pid: 7171).
+2026-03-08 15:37:03 +0000 - dagster - DEBUG - 01_datos_cripto - a567030f-0141-4ed0-989f-657f477c05ba - 7171 - bronze_high - STEP_START - Started execution of step "bronze_high".
+WARNING:urllib3.connectionpool:Retrying (Retry(total=9, connect=1, read=0, redirect=None, status=None)) after connection broken by 'ReadTimeoutError("HTTPConnectionPool(host='binance-connector', port=8000): Read timed out. (read timeout=5)")': /market/ticker/BNBUSDT
+WARNING:urllib3.connectionpool:Retrying (Retry(total=9, connect=1, read=0, redirect=None, status=None)) after connection broken by 'ReadTimeoutError("HTTPConnectionPool(host='binance-connector', port=8000): Read timed out. (read timeout=5)")': /market/ticker/SOLUSDT
+WARNING:urllib3.connectionpool:Retrying (Retry(total=9, connect=1, read=0, redirect=None, status=None)) after connection broken by 'ReadTimeoutError("HTTPConnectionPool(host='binance-connector', port=8000): Read timed out. (read timeout=5)")': /market/ticker/XRPUSDT
+2026-03-08 15:37:58 +0000 - dagster - DEBUG - 01_datos_cripto - a567030f-0141-4ed0-989f-657f477c05ba - 7171 - bronze_high - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 15:37:59 +0000 - dagster - DEBUG - 01_datos_cripto - a567030f-0141-4ed0-989f-657f477c05ba - 7171 - bronze_high - ASSET_MATERIALIZATION - Materialized value bronze_high.
+2026-03-08 15:37:59 +0000 - dagster - DEBUG - 01_datos_cripto - a567030f-0141-4ed0-989f-657f477c05ba - 7171 - bronze_high - STEP_SUCCESS - Finished execution of step "bronze_high" in 55.88s.

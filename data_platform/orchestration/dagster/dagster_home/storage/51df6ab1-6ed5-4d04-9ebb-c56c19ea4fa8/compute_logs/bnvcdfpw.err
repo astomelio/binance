@@ -1,0 +1,44 @@
+2026-03-08 17:35:57 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 51df6ab1-6ed5-4d04-9ebb-c56c19ea4fa8 - 11998 - LOGS_CAPTURED - Started capturing logs in process (pid: 11998).
+2026-03-08 17:35:57 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 51df6ab1-6ed5-4d04-9ebb-c56c19ea4fa8 - 11998 - execute_pending_orders - STEP_START - Started execution of step "execute_pending_orders".
+2026-03-08 17:35:58 +0000 - dagster - INFO - 08_operacion_testnet_15m - 51df6ab1-6ed5-4d04-9ebb-c56c19ea4fa8 - execute_pending_orders - Running Order Execution: /usr/local/bin/python3.11 /app/scripts/execute_approved_orders.py
+2026-03-08 17:40:14 +0000 - dagster - ERROR - 08_operacion_testnet_15m - 51df6ab1-6ed5-4d04-9ebb-c56c19ea4fa8 - 11998 - execute_pending_orders - STEP_FAILURE - Execution of step "execute_pending_orders" failed.
+
+dagster._core.errors.DagsterExecutionStepExecutionError: Error occurred while executing op "execute_pending_orders"::
+
+RuntimeError: Order Execution failed:
+stdout=
+stderr=WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 1/12)
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 2/12)
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 3/12)
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 4/12)
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 5/12)
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 6/12)
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 7/12)
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 8/12)
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 9/12)
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 10/12)
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 11/12)
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 12/12)
+Traceback (most recent call last):
+  File "/app/scripts/execute_approved_orders.py", line 394, in <module>
+    execute_pending_orders(db_path, dry_run=args.dry_run)
+  File "/app/scripts/execute_approved_orders.py", line 87, in execute_pending_orders
+    raise RuntimeError("Failed to acquire DuckDB lock after 1 minute.")
+RuntimeError: Failed to acquire DuckDB lock after 1 minute.
+
+
+Stack Trace:
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/utils.py", line 57, in op_execution_error_boundary
+    yield
+  File "/usr/local/lib/python3.11/site-packages/dagster/_utils/__init__.py", line 394, in iterate_with_context
+    next_output = next(iterator)
+                  ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 135, in _coerce_op_compute_fn_to_iterator
+    result = invoke_compute_fn(
+             ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 115, in invoke_compute_fn
+    return fn(context, **args_to_pass) if context_arg_provided else fn(**args_to_pass)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data_platform/orchestration/dagster/assets.py", line 418, in execute_pending_orders
+    raise RuntimeError(f"Order Execution failed:\nstdout={result.stdout}\nstderr={result.stderr}")
+

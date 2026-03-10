@@ -1,0 +1,21 @@
+2026-03-06 15:07:20 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - 6653 - LOGS_CAPTURED - Started capturing logs in process (pid: 6653).
+2026-03-06 15:07:20 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - 6653 - ml_metadata_sync - STEP_START - Started execution of step "ml_metadata_sync".
+2026-03-06 15:07:20 +0000 - dagster - INFO - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - ml_metadata_sync - Running ML Metadata Sync: /usr/local/bin/python3.11 /app/data_platform/loaders/ml_metadata_loader.py
+2026-03-06 15:07:21 +0000 - dagster - INFO - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - ml_metadata_sync - ML Metadata Sync complete:
+Syncing ML metadata to /app/artifacts/warehouse/crypto.duckdb...
+Syncing MLflow from /app/artifacts/quant_model/mlflow_v2.db
+  Mirroring mlflow_db.runs -> mlflow_runs
+  Mirroring mlflow_db.metrics -> mlflow_metrics
+  Mirroring mlflow_db.params -> mlflow_params
+  Mirroring mlflow_db.tags -> mlflow_tags
+  Mirroring mlflow_db.experiments -> mlflow_experiments
+Syncing Optuna from /app/artifacts/quant_model/optuna.db
+  Mirroring optuna_db.studies -> optuna_studies
+  Mirroring optuna_db.trials -> optuna_trials
+  Mirroring optuna_db.trial_params -> optuna_trial_params
+  Mirroring optuna_db.trial_values -> optuna_trial_values
+Sync complete.
+
+2026-03-06 15:07:21 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - 6653 - ml_metadata_sync - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-06 15:07:21 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - 6653 - ml_metadata_sync - ASSET_MATERIALIZATION - Materialized value ml_metadata_sync.
+2026-03-06 15:07:21 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - dc5645a2-aa22-40df-a4ba-66298c4cc39a - 6653 - ml_metadata_sync - STEP_SUCCESS - Finished execution of step "ml_metadata_sync" in 1.77s.

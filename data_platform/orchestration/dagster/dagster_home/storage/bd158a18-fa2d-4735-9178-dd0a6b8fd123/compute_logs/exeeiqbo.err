@@ -1,0 +1,11 @@
+2026-03-06 16:22:53 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - bd158a18-fa2d-4735-9178-dd0a6b8fd123 - 21124 - LOGS_CAPTURED - Started capturing logs in process (pid: 21124).
+2026-03-06 16:22:53 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - bd158a18-fa2d-4735-9178-dd0a6b8fd123 - 21124 - execute_pending_orders - STEP_START - Started execution of step "execute_pending_orders".
+2026-03-06 16:22:54 +0000 - dagster - INFO - 08_operacion_testnet_15m - bd158a18-fa2d-4735-9178-dd0a6b8fd123 - execute_pending_orders - Running Order Execution: /usr/local/bin/python3.11 /app/scripts/execute_approved_orders.py
+2026-03-06 16:23:12 +0000 - dagster - INFO - 08_operacion_testnet_15m - bd158a18-fa2d-4735-9178-dd0a6b8fd123 - execute_pending_orders - Order Execution complete:
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 1/12)
+WARNING:__main__:DuckDB lock held, waiting 5 seconds... (attempt 2/12)
+ERROR:__main__:Error in execution loop: Binder Error: Column "model_id" referenced that exists in the SELECT clause - but this column cannot be referenced before it is defined
+
+2026-03-06 16:23:12 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - bd158a18-fa2d-4735-9178-dd0a6b8fd123 - 21124 - execute_pending_orders - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-06 16:23:12 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - bd158a18-fa2d-4735-9178-dd0a6b8fd123 - 21124 - execute_pending_orders - ASSET_MATERIALIZATION - Materialized value execute_pending_orders.
+2026-03-06 16:23:12 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - bd158a18-fa2d-4735-9178-dd0a6b8fd123 - 21124 - execute_pending_orders - STEP_SUCCESS - Finished execution of step "execute_pending_orders" in 19.22s.

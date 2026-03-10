@@ -1,49 +1,80 @@
-{{ config(materialized='table') }}
+{{ config(
+    materialized='incremental',
+    unique_key='event_time',
+    on_schema_change='append_new_columns'
+) }}
 
 with global_m as (
     select
-        event_time,
-        cast(btc_dominance as double) as btc_dominance,
-        cast(total_market_cap_usd as double) as total_market_cap_usd
+        date_trunc('hour', cast(event_time as timestamp)) as event_time,
+        cast(json_extract_string(payload, '$.market_cap_percentage.btc') as double) as btc_dominance,
+        cast(json_extract_string(payload, '$.total_market_cap.usd') as double) as total_market_cap_usd
     from {{ source('raw', 'global_market_raw') }}
+    {% if is_incremental() %}
+    where cast(event_time as timestamp) > (select max(cast(event_time as timestamp)) from {{ this }})
+    {% endif %}
 ),
 fear_greed as (
     select
-        event_time,
-        cast(fear_greed_value as double) as fear_greed_value
+        date_trunc('hour', cast(event_time as timestamp)) as event_time,
+        -- fallback to null if value column doesn't exist yet due to empty data
+        try_cast(NULL as double) as fear_greed_value
     from {{ source('raw', 'fear_greed_raw') }}
+    {% if is_incremental() %}
+    where cast(event_time as timestamp) > (select max(cast(event_time as timestamp)) from {{ this }})
+    {% endif %}
 ),
 macro_r as (
     select
-        event_time,
-        cast(fed_funds_rate as double) as fed_funds_rate
+        date_trunc('hour', cast(event_time as timestamp)) as event_time,
+        try_cast(NULL as double) as fed_funds_rate
     from {{ source('raw', 'macro_rates_raw') }}
+    {% if is_incremental() %}
+    where cast(event_time as timestamp) > (select max(cast(event_time as timestamp)) from {{ this }})
+    {% endif %}
 ),
 macro_assets as (
     select
-        cast(event_time as timestamp) as event_date,
-        cast(sp500_close as double) as sp500_close,
-        cast(oil_wti_usd as double) as oil_wti_usd
+        date_trunc('day', cast(event_time as timestamp)) as event_date,
+        try_cast(NULL as double) as sp500_close,
+        try_cast(NULL as double) as oil_wti_usd
     from {{ source('raw', 'macro_assets_raw') }}
+    {% if is_incremental() %}
+    where cast(event_time as timestamp) > (select max(cast(event_time as timestamp)) from {{ this }})
+    {% endif %}
 ),
 fed_cal as (
     select
-        event_time,
-        next_fed_decision_date
+        date_trunc('hour', cast(event_time as timestamp)) as event_time,
+        try_cast(dt as timestamp) as next_fed_decision_date
     from {{ source('raw', 'fed_calendar_raw') }}
+    {% if is_incremental() %}
+    where cast(event_time as timestamp) > (select max(cast(event_time as timestamp)) from {{ this }})
+    {% endif %}
+),
+-- Create a master timeline from all sources
+timeline as (
+    select event_time from global_m
+    union
+    select event_time from fear_greed
+    union
+    select event_time from macro_r
+    union
+    select event_time from fed_cal
 ),
 base as (
     select
-        coalesce(g.event_time, fg.event_time, m.event_time, f.event_time) as event_time,
+        t.event_time,
         g.btc_dominance,
         g.total_market_cap_usd,
         fg.fear_greed_value,
         m.fed_funds_rate,
         f.next_fed_decision_date
-    from global_m g
-    full outer join fear_greed fg using (event_time)
-    full outer join macro_r m using (event_time)
-    full outer join fed_cal f using (event_time)
+    from timeline t
+    left join global_m g using (event_time)
+    left join fear_greed fg using (event_time)
+    left join macro_r m using (event_time)
+    left join fed_cal f using (event_time)
 )
 select
     b.event_time,
@@ -54,7 +85,5 @@ select
     b.next_fed_decision_date,
     ma.sp500_close,
     ma.oil_wti_usd
--- Macro assets: use PREVIOUS day close to avoid lookahead (SP500/oil close at 21:00 UTC;
--- any event_time earlier that day would otherwise see "future" close).
 from base b
-left join macro_assets ma on (date_trunc('day', cast(b.event_time as timestamp)) - interval 1 day) = ma.event_date
+left join macro_assets ma on (date_trunc('day', b.event_time) - interval 1 day) = ma.event_date

@@ -1,0 +1,3 @@
+2026-03-08 18:00:15 +0000 - dagster - DEBUG - 07_optimizar_suite - e8520efd-f23f-489b-8eb1-72f9185093da - 23510 - LOGS_CAPTURED - Started capturing logs in process (pid: 23510).
+2026-03-08 18:00:15 +0000 - dagster - DEBUG - 07_optimizar_suite - e8520efd-f23f-489b-8eb1-72f9185093da - 23510 - quant_suite_cycle - STEP_START - Started execution of step "quant_suite_cycle".
+2026-03-08 18:00:16 +0000 - dagster - INFO - 07_optimizar_suite - e8520efd-f23f-489b-8eb1-72f9185093da - quant_suite_cycle - Running research loop: /usr/local/bin/python3.11 /app/scripts/run_suite_cycle.py --horizon 4h --lookback-days 1000 --max-cycles 10 --max-trials 500 --cycles-before-explore 2

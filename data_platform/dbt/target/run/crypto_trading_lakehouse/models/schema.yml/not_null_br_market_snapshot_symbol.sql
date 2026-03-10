@@ -10,7 +10,7 @@ select
 
 
 select symbol
-from "crypto"."bronze"."br_market_snapshot"
+from "crypto"."main"."br_market_snapshot"
 where symbol is null
 
 

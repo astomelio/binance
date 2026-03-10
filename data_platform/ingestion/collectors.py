@@ -5,11 +5,19 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
-
 import requests
-
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from concurrent.futures import ThreadPoolExecutor
 from data_platform.ingestion.base import Collector
 
+# Global session to pool TCP connections and prevent socket exhaustion
+_session = requests.Session()
+# Reducimos los reintentos automáticos a 1. Si falla, que falle rápido.
+_retry = Retry(connect=1, read=1, backoff_factor=0.1)
+_adapter = HTTPAdapter(pool_connections=100, pool_maxsize=100, max_retries=_retry)
+_session.mount("http://", _adapter)
+_session.mount("https://", _adapter)
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -22,23 +30,38 @@ class BinanceLocalCollector(Collector):
     def __init__(self, base_url: str, symbols: List[str]) -> None:
         self.base_url = base_url.rstrip("/")
         self.symbols = symbols
+        self._is_healthy = self._check_health()
+
+    def _check_health(self) -> bool:
+        try:
+            # Hacemos un ping a la raíz o a un endpoint simple para ver si la API local existe y no está trabada
+            resp = _session.get(f"{self.base_url}/health", timeout=2)
+            return resp.status_code < 500
+        except Exception:
+            return False
 
     def _get(self, path: str, params: Dict | None = None) -> Dict:
-        resp = requests.get(f"{self.base_url}{path}", params=params, timeout=20)
+        # Timeout bajado a 5s para no ahogar a FastAPI local
+        resp = _session.get(f"{self.base_url}{path}", params=params, timeout=5)
         resp.raise_for_status()
         return resp.json()
 
     def collect(self) -> List[Dict]:
+        if not self._is_healthy:
+            print(f"[BinanceLocalCollector][SKIP] API en {self.base_url} inalcanzable o lenta. Omitiendo llamadas locales para no atascar.")
+            return []
+
         rows: List[Dict] = []
         ts = utc_now_iso()
-        for symbol in self.symbols:
-            spot_ticker = self._get(f"/market/ticker/{symbol}")
-            futures_ticker = self._get(f"/futures/market/ticker/{symbol}")
-            spot_klines = self._get(f"/market/klines/{symbol}", {"interval": "1m", "limit": 120})
-            futures_klines = self._get(f"/futures/market/klines/{symbol}", {"interval": "1m", "limit": 120})
 
-            rows.append(
-                {
+        def _fetch_symbol(symbol: str) -> Dict | None:
+            try:
+                spot_ticker = self._get(f"/market/ticker/{symbol}")
+                futures_ticker = self._get(f"/futures/market/ticker/{symbol}")
+                spot_klines = self._get(f"/market/klines/{symbol}", {"interval": "1m", "limit": 120})
+                futures_klines = self._get(f"/futures/market/klines/{symbol}", {"interval": "1m", "limit": 120})
+
+                return {
                     "event_time": ts,
                     "symbol": symbol,
                     "spot_ticker": spot_ticker.get("data", {}),
@@ -46,7 +69,14 @@ class BinanceLocalCollector(Collector):
                     "spot_klines_1m": spot_klines.get("data", []),
                     "futures_klines_1m": futures_klines.get("data", []),
                 }
-            )
+            except Exception as e:
+                return None
+
+        # Reducimos los workers a 5. La API FastAPI local se ahoga con 30 hilos concurrentes pegándole.
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            results = list(executor.map(_fetch_symbol, self.symbols))
+            rows = [r for r in results if r is not None]
+
         return rows
 
 
@@ -55,7 +85,7 @@ class CoinGeckoGlobalCollector(Collector):
     dataset = "global_market"
 
     def collect(self) -> List[Dict]:
-        resp = requests.get("https://api.coingecko.com/api/v3/global", timeout=20)
+        resp = _session.get("https://api.coingecko.com/api/v3/global", timeout=20)
         resp.raise_for_status()
         payload = resp.json()
         return [{"event_time": utc_now_iso(), "payload": payload.get("data", {})}]
@@ -66,7 +96,7 @@ class FearGreedCollector(Collector):
     dataset = "fear_greed_index"
 
     def collect(self) -> List[Dict]:
-        resp = requests.get("https://api.alternative.me/fng/?limit=1&format=json", timeout=20)
+        resp = _session.get("https://api.alternative.me/fng/?limit=1&format=json", timeout=20)
         resp.raise_for_status()
         payload = resp.json()
         data = payload.get("data", [{}])[0] if payload.get("data") else {}
@@ -85,52 +115,57 @@ class BinanceDerivativesPublicCollector(Collector):
     dataset = "derivatives_snapshot"
 
     def __init__(self, symbols: List[str]) -> None:
-        self.symbols = symbols
+        self.symbols = [s.upper() for s in symbols]
 
     def collect(self) -> List[Dict]:
         rows: List[Dict] = []
         ts = utc_now_iso()
         base = "https://fapi.binance.com"
 
+        # Bulk fetch premium index and 24h ticker for ALL symbols (very efficient)
+        try:
+            premium_resp = _session.get(f"{base}/fapi/v1/premiumIndex", timeout=30)
+            premium_resp.raise_for_status()
+            all_premium = {p["symbol"]: p for p in premium_resp.json()}
+
+            ticker_resp = _session.get(f"{base}/fapi/v1/ticker/24hr", timeout=30)
+            ticker_resp.raise_for_status()
+            all_tickers = {t["symbol"]: t for t in ticker_resp.json()}
+        except Exception as e:
+            print(f"[BinanceDerivativesPublicCollector] Bulk fetch failed: {e}")
+            return []
+
         for symbol in self.symbols:
-            premium = requests.get(
-                f"{base}/fapi/v1/premiumIndex",
-                params={"symbol": symbol.upper()},
-                timeout=20,
-            )
-            premium.raise_for_status()
-            premium_payload = premium.json()
+            # openInterest still requires per-symbol call, but we reduced 3 calls to 1 per symbol
+            try:
+                oi_resp = _session.get(
+                    f"{base}/fapi/v1/openInterest",
+                    params={"symbol": symbol},
+                    timeout=10,
+                )
+                oi_resp.raise_for_status()
+                oi_payload = oi_resp.json()
+                
+                p_payload = all_premium.get(symbol, {})
+                t_payload = all_tickers.get(symbol, {})
 
-            open_interest = requests.get(
-                f"{base}/fapi/v1/openInterest",
-                params={"symbol": symbol.upper()},
-                timeout=20,
-            )
-            open_interest.raise_for_status()
-            oi_payload = open_interest.json()
-
-            ticker_24h = requests.get(
-                f"{base}/fapi/v1/ticker/24hr",
-                params={"symbol": symbol.upper()},
-                timeout=20,
-            )
-            ticker_24h.raise_for_status()
-            ticker_payload = ticker_24h.json()
-
-            rows.append(
-                {
-                    "event_time": ts,
-                    "symbol": symbol.upper(),
-                    "mark_price": premium_payload.get("markPrice"),
-                    "index_price": premium_payload.get("indexPrice"),
-                    "last_funding_rate": premium_payload.get("lastFundingRate"),
-                    "next_funding_time": premium_payload.get("nextFundingTime"),
-                    "open_interest": oi_payload.get("openInterest"),
-                    "open_interest_symbol": oi_payload.get("symbol"),
-                    "price_change_percent_24h": ticker_payload.get("priceChangePercent"),
-                    "quote_volume_24h": ticker_payload.get("quoteVolume"),
-                }
-            )
+                rows.append(
+                    {
+                        "event_time": ts,
+                        "symbol": symbol,
+                        "mark_price": p_payload.get("markPrice"),
+                        "index_price": p_payload.get("indexPrice"),
+                        "last_funding_rate": p_payload.get("lastFundingRate"),
+                        "next_funding_time": p_payload.get("nextFundingTime"),
+                        "open_interest": oi_payload.get("openInterest"),
+                        "open_interest_symbol": oi_payload.get("symbol"),
+                        "price_change_percent_24h": t_payload.get("priceChangePercent"),
+                        "quote_volume_24h": t_payload.get("quoteVolume"),
+                    }
+                )
+            except Exception as e:
+                # Some symbols might not have OI or fail, skip them
+                continue
 
         return rows
 
@@ -145,30 +180,31 @@ class BinanceDerivativesFlowCollector(Collector):
     def collect(self) -> List[Dict]:
         rows: List[Dict] = []
         ts = utc_now_iso()
-        for symbol in self.symbols:
-            s = symbol.upper()
-            # Global long/short account ratio
-            gls = requests.get(
-                "https://fapi.binance.com/futures/data/globalLongShortAccountRatio",
-                params={"symbol": s, "period": "1h", "limit": 1},
-                timeout=20,
-            )
-            gls.raise_for_status()
-            gls_data = gls.json()
-            gls_latest = gls_data[-1] if gls_data else {}
 
-            # Taker buy/sell volume ratio
-            taker = requests.get(
-                "https://fapi.binance.com/futures/data/takerlongshortRatio",
-                params={"symbol": s, "period": "1h", "limit": 1},
-                timeout=20,
-            )
-            taker.raise_for_status()
-            taker_data = taker.json()
-            taker_latest = taker_data[-1] if taker_data else {}
+        def _fetch_flow(symbol: str) -> Dict | None:
+            try:
+                s = symbol.upper()
+                # Global long/short account ratio
+                gls = _session.get(
+                    "https://fapi.binance.com/futures/data/globalLongShortAccountRatio",
+                    params={"symbol": s, "period": "1h", "limit": 1},
+                    timeout=5,
+                )
+                gls.raise_for_status()
+                gls_data = gls.json()
+                gls_latest = gls_data[-1] if gls_data else {}
 
-            rows.append(
-                {
+                # Taker buy/sell volume ratio
+                taker = _session.get(
+                    "https://fapi.binance.com/futures/data/takerlongshortRatio",
+                    params={"symbol": s, "period": "1h", "limit": 1},
+                    timeout=5,
+                )
+                taker.raise_for_status()
+                taker_data = taker.json()
+                taker_latest = taker_data[-1] if taker_data else {}
+
+                return {
                     "event_time": ts,
                     "symbol": s,
                     "long_short_account_ratio": float(gls_latest.get("longShortRatio", 0) or 0),
@@ -178,7 +214,12 @@ class BinanceDerivativesFlowCollector(Collector):
                     "buy_vol": float(taker_latest.get("buyVol", 0) or 0),
                     "sell_vol": float(taker_latest.get("sellVol", 0) or 0),
                 }
-            )
+            except Exception:
+                return None
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            results = list(executor.map(_fetch_flow, self.symbols))
+            rows = [r for r in results if r is not None]
 
         return rows
 
@@ -194,15 +235,16 @@ class BybitFuturesCollector(Collector):
         rows: List[Dict] = []
         ts = utc_now_iso()
         base = "https://api.bybit.com/v5/market/tickers"
-        for symbol in self.symbols:
-            s = symbol.upper()
-            resp = requests.get(base, params={"category": "linear", "symbol": s}, timeout=20)
-            resp.raise_for_status()
-            payload = resp.json()
-            tickers = payload.get("result", {}).get("list", [])
-            ticker = tickers[0] if tickers else {}
-            rows.append(
-                {
+
+        def _fetch_bybit(symbol: str) -> Dict | None:
+            try:
+                s = symbol.upper()
+                resp = _session.get(base, params={"category": "linear", "symbol": s}, timeout=5)
+                resp.raise_for_status()
+                payload = resp.json()
+                tickers = payload.get("result", {}).get("list", [])
+                ticker = tickers[0] if tickers else {}
+                return {
                     "event_time": ts,
                     "exchange": "bybit",
                     "symbol": s,
@@ -211,7 +253,13 @@ class BybitFuturesCollector(Collector):
                     "ask_price": float(ticker.get("ask1Price", 0) or 0),
                     "quote_volume_24h": float(ticker.get("turnover24h", 0) or 0),
                 }
-            )
+            except Exception:
+                return None
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            results = list(executor.map(_fetch_bybit, self.symbols))
+            rows = [r for r in results if r is not None]
+
         return rows
 
 
@@ -231,16 +279,17 @@ class OKXFuturesCollector(Collector):
         rows: List[Dict] = []
         ts = utc_now_iso()
         base = "https://www.okx.com/api/v5/market/ticker"
-        for symbol in self.symbols:
-            s = symbol.upper()
-            inst_id = self._to_okx_inst_id(s)
-            resp = requests.get(base, params={"instId": inst_id}, timeout=20)
-            resp.raise_for_status()
-            payload = resp.json()
-            data = payload.get("data", [])
-            ticker = data[0] if data else {}
-            rows.append(
-                {
+
+        def _fetch_okx(symbol: str) -> Dict | None:
+            try:
+                s = symbol.upper()
+                inst_id = self._to_okx_inst_id(s)
+                resp = _session.get(base, params={"instId": inst_id}, timeout=5)
+                resp.raise_for_status()
+                payload = resp.json()
+                data = payload.get("data", [])
+                ticker = data[0] if data else {}
+                return {
                     "event_time": ts,
                     "exchange": "okx",
                     "symbol": s,
@@ -249,7 +298,13 @@ class OKXFuturesCollector(Collector):
                     "ask_price": float(ticker.get("askPx", 0) or 0),
                     "quote_volume_24h": float(ticker.get("volCcy24h", 0) or 0),
                 }
-            )
+            except Exception:
+                return None
+
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            results = list(executor.map(_fetch_okx, self.symbols))
+            rows = [r for r in results if r is not None]
+
         return rows
 
 
@@ -272,7 +327,7 @@ class DexScreenerCollector(Collector):
             if not chain_id or not pair_address or not symbol:
                 continue
             url = f"https://api.dexscreener.com/latest/dex/pairs/{chain_id}/{pair_address}"
-            resp = requests.get(url, timeout=20)
+            resp = _session.get(url, timeout=20)
             resp.raise_for_status()
             payload = resp.json()
             pair_data = payload.get("pair", {}) or {}
@@ -286,11 +341,12 @@ class DexScreenerCollector(Collector):
                     "chain_id": chain_id,
                     "pair_address": pair_address,
                     "dex_id": pair_data.get("dexId", ""),
-                    "price_usd": float(pair_data.get("priceUsd", 0) or 0),
-                    "liquidity_usd": float(pair_data.get("liquidity", {}).get("usd", 0) or 0),
-                    "volume_24h_usd": float(pair_data.get("volume", {}).get("h24", 0) or 0),
+                    "dex_price_usd": float(pair_data.get("priceUsd", 0) or 0),
+                    "dex_liquidity_usd": float(pair_data.get("liquidity", {}).get("usd", 0) or 0),
+                    "dex_volume_24h_usd": float(pair_data.get("volume", {}).get("h24", 0) or 0),
                     "txns_buys_24h": buys,
                     "txns_sells_24h": sells,
+                    "dex_txn_imbalance_24h": (buys - sells) / max(buys + sells, 1),
                 }
             )
         return rows
@@ -316,7 +372,7 @@ class FREDMacroCollector(Collector):
             "sort_order": "desc",
             "limit": 5,
         }
-        resp = requests.get(url, params=params, timeout=20)
+        resp = _session.get(url, params=params, timeout=20)
         resp.raise_for_status()
         payload = resp.json()
         return [{"event_time": utc_now_iso(), "payload": payload}]
@@ -409,7 +465,7 @@ class FedCalendarCollector(Collector):
     def collect(self) -> List[Dict]:
         # 1) Try official live source
         try:
-            resp = requests.get(self.live_url, timeout=20)
+            resp = _session.get(self.live_url, timeout=20)
             resp.raise_for_status()
             dates = self._parse_fomc_dates_from_html(resp.text)
             # Quality gate: a valid FOMC calendar should include multiple future dates.
@@ -446,8 +502,129 @@ class OnChainCollector(Collector):
     def collect(self) -> List[Dict]:
         if not self.provider_url:
             return [{"event_time": utc_now_iso(), "warning": "ONCHAIN_PROVIDER_URL not set"}]
-        resp = requests.get(self.provider_url, timeout=20)
+        resp = _session.get(self.provider_url, timeout=20)
         resp.raise_for_status()
         payload = resp.json()
         return [{"event_time": utc_now_iso(), "payload": payload}]
+
+
+class HyperliquidCollector(Collector):
+    source = "hyperliquid"
+    dataset = "meta_and_ctx"
+
+    def collect(self) -> List[Dict]:
+        url = "https://api.hyperliquid.xyz/info"
+        ts = utc_now_iso()
+        try:
+            # Meta and asset context for funding, open interest, etc.
+            resp = _session.post(url, json={"type": "metaAndAssetCtx"}, timeout=20)
+            resp.raise_for_status()
+            payload = resp.json()
+            return [{"event_time": ts, "payload": payload}]
+        except Exception as e:
+            return [{"event_time": ts, "error": str(e)}]
+
+
+class AsterCollector(Collector):
+    source = "asterdex"
+    dataset = "market_snapshot"
+
+    def __init__(self, symbols: List[str]) -> None:
+        self.symbols = symbols
+        self.base_url = "https://fapi.asterdex.com"
+
+    def collect(self) -> List[Dict]:
+        rows: List[Dict] = []
+        ts = utc_now_iso()
+        for symbol in self.symbols:
+            s = symbol.upper()
+            try:
+                # 24hr Ticker Price Change Statistics (Binance style)
+                ticker_resp = _session.get(f"{self.base_url}/fapi/v3/ticker/24hr", params={"symbol": s}, timeout=20)
+                ticker_resp.raise_for_status()
+                ticker_data = ticker_resp.json()
+
+                # Mark Price and Funding Rate
+                premium_resp = _session.get(f"{self.base_url}/fapi/v3/premiumIndex", params={"symbol": s}, timeout=20)
+                premium_resp.raise_for_status()
+                premium_data = premium_resp.json()
+
+                # Open Interest
+                oi_resp = _session.get(f"{self.base_url}/fapi/v3/openInterest", params={"symbol": s}, timeout=20)
+                oi_resp.raise_for_status()
+                oi_data = oi_resp.json()
+
+                rows.append({
+                    "event_time": ts,
+                    "symbol": s,
+                    "ticker": ticker_data,
+                    "premium": premium_data,
+                    "open_interest": oi_data
+                })
+            except Exception as e:
+                print(f"[AsterCollector][WARN] Failed for {s}: {e}")
+        return rows
+
+
+class AsterDEXCollector(Collector):
+    source = "aster_dex"
+    dataset = "futures_snapshot"
+
+    def __init__(self, symbols: List[str]) -> None:
+        self.symbols = symbols
+
+    def collect(self) -> List[Dict]:
+        rows: List[Dict] = []
+        ts = utc_now_iso()
+        base = "https://fapi.asterdex.com"
+
+        def _fetch_aster(symbol: str) -> Dict | None:
+            try:
+                s = symbol.upper()
+                # Aster API is mostly Binance-compatible
+                premium = _session.get(
+                    f"{base}/fapi/v1/premiumIndex",
+                    params={"symbol": s},
+                    timeout=10,
+                )
+                premium.raise_for_status()
+                premium_payload = premium.json()
+
+                open_interest = _session.get(
+                    f"{base}/fapi/v1/openInterest",
+                    params={"symbol": s},
+                    timeout=10,
+                )
+                open_interest.raise_for_status()
+                oi_payload = open_interest.json()
+
+                ticker_24h = _session.get(
+                    f"{base}/fapi/v1/ticker/24hr",
+                    params={"symbol": s},
+                    timeout=10,
+                )
+                ticker_24h.raise_for_status()
+                ticker_payload = ticker_24h.json()
+
+                return {
+                    "event_time": ts,
+                    "symbol": s,
+                    "mark_price": premium_payload.get("markPrice"),
+                    "index_price": premium_payload.get("indexPrice"),
+                    "last_funding_rate": premium_payload.get("lastFundingRate"),
+                    "next_funding_time": premium_payload.get("nextFundingTime"),
+                    "open_interest": oi_payload.get("openInterest"),
+                    "open_interest_symbol": oi_payload.get("symbol"),
+                    "price_change_percent_24h": ticker_payload.get("priceChangePercent"),
+                    "quote_volume_24h": ticker_payload.get("quoteVolume"),
+                }
+            except Exception:
+                # Log nothing to avoid flooding logs with 400s
+                return None
+
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            results = list(executor.map(_fetch_aster, self.symbols))
+            rows = [r for r in results if r is not None]
+
+        return rows
 

@@ -8,9 +8,10 @@ services:
       - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
       - BINANCE_TESTNET=${BINANCE_TESTNET:-true}
       - LAKE_ROOT=${LAKE_ROOT_DOCKER:-/data/lake}
+      - DBT_DUCKDB_PATH=/app/artifacts/warehouse/crypto.duckdb
     volumes:
-      - .:/app
-      - ${LAKE_ROOT_HOST:-/Users/joaquincano/data/binance_lake}:${LAKE_ROOT_DOCKER:-/data/lake}
+      - ./artifacts:/app/artifacts
+      - ${LAKE_ROOT_HOST:-./data_lake}:${LAKE_ROOT_DOCKER:-/data/lake}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -48,15 +49,28 @@ services:
       - DAGSTER_PG_PASSWORD=dagster
       - API_BASE_URL=http://binance-connector:8000
       - LAKE_ROOT=${LAKE_ROOT_DOCKER:-/data/lake}
+      - DBT_DUCKDB_PATH=/app/artifacts/warehouse/crypto.duckdb
     volumes:
-      - .:/app
-      - ${LAKE_ROOT_HOST:-/Users/joaquincano/data/binance_lake}:${LAKE_ROOT_DOCKER:-/data/lake}
+      - ./artifacts:/app/artifacts
+      - ${LAKE_ROOT_HOST:-./data_lake}:${LAKE_ROOT_DOCKER:-/data/lake}
+      - dagster_logs:/app/data_platform/orchestration/dagster/dagster_home/storage
+      - ./ai:/app/ai
+      - ./scripts:/app/scripts
+      - ./data_platform:/app/data_platform
+      - ./trading_lib:/app/trading_lib
     depends_on:
       dagster-postgres:
         condition: service_healthy
       binance-connector:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/server_info"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
 
 volumes:
   dagster_postgres_data:
+  dagster_logs:

@@ -1,0 +1,7 @@
+2026-03-06 16:52:42 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - a41ea4e3-6832-44ff-ab29-fa161ce0fbfe - 13261 - LOGS_CAPTURED - Started capturing logs in process (pid: 13261).
+2026-03-06 16:52:42 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - a41ea4e3-6832-44ff-ab29-fa161ce0fbfe - 13261 - warehouse_raw_load - STEP_START - Started execution of step "warehouse_raw_load".
+WARNING:data_platform.loaders.bronze_to_duckdb:DuckDB lock held, waiting 5s... (attempt 1/12)
+2026-03-06 16:52:53 +0000 - dagster - INFO - 08_operacion_testnet_15m - a41ea4e3-6832-44ff-ab29-fa161ce0fbfe - warehouse_raw_load - Loaded 41 total rows into 12 tables
+2026-03-06 16:52:53 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - a41ea4e3-6832-44ff-ab29-fa161ce0fbfe - 13261 - warehouse_raw_load - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-06 16:52:53 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - a41ea4e3-6832-44ff-ab29-fa161ce0fbfe - 13261 - warehouse_raw_load - ASSET_MATERIALIZATION - Materialized value warehouse_raw_load.
+2026-03-06 16:52:53 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - a41ea4e3-6832-44ff-ab29-fa161ce0fbfe - 13261 - warehouse_raw_load - STEP_SUCCESS - Finished execution of step "warehouse_raw_load" in 11.1s.

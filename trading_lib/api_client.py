@@ -16,7 +16,12 @@ class BinanceConnectorClient:
     def _request(self, method: str, path: str, params: Optional[Dict] = None, body: Optional[Dict] = None) -> Dict:
         url = f"{self.base_url}{path}"
         resp = requests.request(method, url, params=params, json=body, timeout=25)
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            import logging
+            logging.getLogger(__name__).error(f"API Error: {method} {path} -> {resp.text}")
+            raise
         return resp.json()
 
     def get_spot_klines(self, symbol: str, interval: str = "1h", limit: int = 300) -> List[Candle]:
@@ -90,11 +95,36 @@ class BinanceConnectorClient:
         )
         return payload
 
+    def get_futures_account_balance(self) -> Dict:
+        payload = self._request("GET", "/futures/account/balance")
+        if payload.get("status") != "success":
+            raise ValueError(f"Invalid response: {payload}")
+        return payload["data"]
+
+    def get_futures_positions(self) -> List[Dict]:
+        payload = self._request("GET", "/futures/positions")
+        if payload.get("status") != "success":
+            raise ValueError(f"Invalid response: {payload}")
+        return payload["data"]
+
     def get_futures_ticker_price(self, symbol: str) -> float:
         payload = self._request("GET", f"/futures/market/ticker/{symbol}")
         if payload.get("status") != "success":
             raise ValueError(f"Invalid response: {payload}")
         return float(payload["data"]["last_price"])
+
+    def get_futures_order_book(self, symbol: str, limit: int = 5) -> Dict:
+        """Get order book for limit order pricing (maker fees)."""
+        payload = self._request("GET", f"/futures/market/orderbook/{symbol}", params={"limit": limit})
+        if payload.get("status") != "success":
+            raise ValueError(f"Invalid response: {payload}")
+        return payload["data"]
+
+    def get_futures_exchange_info(self) -> Dict:
+        payload = self._request("GET", "/futures/exchange-info")
+        if payload.get("status") != "success":
+            raise ValueError(f"Invalid response: {payload}")
+        return payload["data"]
 
     def create_futures_order(
         self,
@@ -106,6 +136,7 @@ class BinanceConnectorClient:
         reduce_only: bool = False,
         price: float | None = None,
         time_in_force: str | None = None,
+        stop_price: float | None = None,
     ) -> Dict:
         body: Dict = {
             "symbol": symbol,
@@ -120,5 +151,7 @@ class BinanceConnectorClient:
             body["price"] = price
         if time_in_force:
             body["time_in_force"] = time_in_force
+        if stop_price is not None:
+            body["stop_price"] = stop_price
         return self._request("POST", "/futures/order/create", body=body)
 

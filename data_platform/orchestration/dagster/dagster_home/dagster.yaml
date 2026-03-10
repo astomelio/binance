@@ -1,3 +1,7 @@
+# Aumentar timeout si el código tarda en cargar (dbt, mlflow, etc.)
+code_servers:
+  local_startup_timeout: 600
+
 storage:
   postgres:
     postgres_db:
@@ -13,7 +17,9 @@ storage:
 
 run_coordinator:
   module: dagster.core.run_coordinator
-  class: DefaultRunCoordinator
+  class: QueuedRunCoordinator
+  config:
+    max_concurrent_runs: 1
 
 run_launcher:
   module: dagster.core.launcher

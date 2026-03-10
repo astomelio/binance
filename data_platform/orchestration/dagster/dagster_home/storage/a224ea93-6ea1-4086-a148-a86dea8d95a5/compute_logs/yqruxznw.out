@@ -1,0 +1,5 @@
+[bronze][SKIP] No ONCHAIN_PROVIDER_URL. Skipping OnChain.
+Starting parallel fetch for 2 collectors...
+[bronze][WARN] fred/macro_rates: [Errno 13] Permission denied: 'C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/fred/macro_rates/dt=2026-03-07/hour=21'
+[bronze][WARN] fed_calendar/decision_dates: [Errno 13] Permission denied: 'C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/fed_calendar/decision_dates/dt=2026-03-07/hour=21'
+Total bronze run time: 0.91s

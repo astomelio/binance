@@ -1,0 +1,21 @@
+2026-03-08 17:07:20 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - df55e6ae-786c-44b6-9921-3c0b18e34f38 - 18476 - LOGS_CAPTURED - Started capturing logs in process (pid: 18476).
+2026-03-08 17:07:20 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - df55e6ae-786c-44b6-9921-3c0b18e34f38 - 18476 - quant_risk_evaluation - STEP_START - Started execution of step "quant_risk_evaluation".
+2026-03-08 17:07:20 +0000 - dagster - INFO - 08_operacion_testnet_15m - df55e6ae-786c-44b6-9921-3c0b18e34f38 - quant_risk_evaluation - Running Risk Engine: /usr/local/bin/python3.11 /app/scripts/run_risk_engine.py
+2026-03-08 17:07:32 +0000 - dagster - INFO - 08_operacion_testnet_15m - df55e6ae-786c-44b6-9921-3c0b18e34f38 - quant_risk_evaluation - Risk Engine complete:
+50 >= 0.15
+INFO:trading_lib.risk.engine:raw_signals count before filter: 0
+INFO:trading_lib.risk.engine:sorted_signals count after filter: 0
+INFO:__main__:DEBUG raw_entries count: 0 -> approved: 0
+WARNING:trading_lib.risk.engine:Blocked by drawdown limit: 0.50 >= 0.15
+INFO:trading_lib.risk.engine:raw_signals count before filter: 2
+INFO:trading_lib.risk.engine:sorted_signals count after filter: 2
+INFO:trading_lib.risk.engine:DEBUG sizing for BTCUSDT: conf=0.55, vol=0.05, base=1001.0304997920001, conf_m=0.40, vol_m=0.21, final=83.83
+INFO:trading_lib.risk.engine:DEBUG sizing for ETHUSDT: conf=0.55, vol=0.05, base=1001.0304997920001, conf_m=0.40, vol_m=0.21, final=83.83
+INFO:__main__:REBALANCE: ETHUSDT | SHORT | current=$95.80 -> target=$83.83 | delta=$-11.97 (REDUCE)
+INFO:__main__:REBALANCE: BTCUSDT | LONG | current=$135.26 -> target=$83.83 | delta=$-51.43 (REDUCE)
+INFO:__main__:Inserted 2 raw signals
+INFO:__main__:Inserted 2 orders (Entries: 0, Exits: 0, Rebalances: 2). Risk rejected: 0
+
+2026-03-08 17:07:32 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - df55e6ae-786c-44b6-9921-3c0b18e34f38 - 18476 - quant_risk_evaluation - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 17:07:32 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - df55e6ae-786c-44b6-9921-3c0b18e34f38 - 18476 - quant_risk_evaluation - ASSET_MATERIALIZATION - Materialized value quant_risk_evaluation.
+2026-03-08 17:07:32 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - df55e6ae-786c-44b6-9921-3c0b18e34f38 - 18476 - quant_risk_evaluation - STEP_SUCCESS - Finished execution of step "quant_risk_evaluation" in 11.69s.

@@ -1,0 +1,5 @@
+2026-03-08 10:40:54 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 60de4671-f7b2-4067-9f47-fa796e377314 - 4718 - LOGS_CAPTURED - Started capturing logs in process (pid: 4718).
+2026-03-08 10:40:54 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 60de4671-f7b2-4067-9f47-fa796e377314 - 4718 - bronze_medium - STEP_START - Started execution of step "bronze_medium".
+2026-03-08 10:40:55 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 60de4671-f7b2-4067-9f47-fa796e377314 - 4718 - bronze_medium - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 10:40:55 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 60de4671-f7b2-4067-9f47-fa796e377314 - 4718 - bronze_medium - ASSET_MATERIALIZATION - Materialized value bronze_medium.
+2026-03-08 10:40:55 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 60de4671-f7b2-4067-9f47-fa796e377314 - 4718 - bronze_medium - STEP_SUCCESS - Finished execution of step "bronze_medium" in 625ms.

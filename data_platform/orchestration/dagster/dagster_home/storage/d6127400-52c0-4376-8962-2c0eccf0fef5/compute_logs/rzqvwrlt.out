@@ -1,0 +1,9 @@
+[bronze][SKIP] No ONCHAIN_PROVIDER_URL. Skipping OnChain.
+Starting parallel fetch for 6 collectors...
+[bronze][WARN] binance_local_api/market_snapshot: [Errno 13] Permission denied: 'C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/binance_local_api/market_snapshot/dt=2026-03-08'
+[bronze] binance_public/derivatives_snapshot: 42 rows. (Fetch: 12.68s, Write: 0.03s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/binance_public/derivatives_snapshot/dt=2026-03-08/hour=15/part-20260308T155513.jsonl
+[bronze] binance_public/derivatives_flow: 50 rows. (Fetch: 5.69s, Write: 0.02s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/binance_public/derivatives_flow/dt=2026-03-08/hour=15/part-20260308T155506.jsonl
+[bronze] bybit_public/futures_snapshot: 50 rows. (Fetch: 1.93s, Write: 0.02s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/bybit_public/futures_snapshot/dt=2026-03-08/hour=15/part-20260308T155502.jsonl
+[bronze] okx_public/futures_snapshot: 20 rows. (Fetch: 2.24s, Write: 0.02s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/okx_public/futures_snapshot/dt=2026-03-08/hour=15/part-20260308T155503.jsonl
+[bronze] hyperliquid/meta_and_ctx: 1 rows. (Fetch: 0.39s, Write: 0.03s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/hyperliquid/meta_and_ctx/dt=2026-03-08/hour=15/part-20260308T155501.jsonl
+Total bronze run time: 55.77s

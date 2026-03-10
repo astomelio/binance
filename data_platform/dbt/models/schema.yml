@@ -43,6 +43,21 @@ sources:
         freshness:
           warn_after: {count: 168, period: hour}
           error_after: {count: 336, period: hour}
+      - name: stock_prices
+      - name: news_sentiment
+      - name: x_account_sentiment
+      - name: aster_dex_raw
+      - name: hyperliquid_raw
+      # ML Metadata (synced from SQLite)
+      - name: mlflow_runs
+      - name: mlflow_metrics
+      - name: mlflow_params
+      - name: mlflow_tags
+      - name: mlflow_experiments
+      - name: optuna_studies
+      - name: optuna_trials
+      - name: optuna_trial_params
+      - name: optuna_trial_values
 
 models:
   - name: br_market_snapshot

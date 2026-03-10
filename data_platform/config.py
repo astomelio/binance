@@ -11,7 +11,7 @@ load_dotenv()
 
 
 def _resolve_symbols() -> List[str]:
-    raw = os.getenv("DP_SYMBOLS", "BTCUSDT,ETHUSDT,BNBUSDT")
+    raw = os.getenv("DP_SYMBOLS", "top")
     from data_platform.symbols import resolve_symbols
     return resolve_symbols(raw)
 

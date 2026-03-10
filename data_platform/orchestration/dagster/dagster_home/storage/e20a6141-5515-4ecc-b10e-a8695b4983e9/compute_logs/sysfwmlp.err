@@ -1,0 +1,6 @@
+2026-03-07 23:33:23 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - e20a6141-5515-4ecc-b10e-a8695b4983e9 - 2862 - LOGS_CAPTURED - Started capturing logs in process (pid: 2862).
+2026-03-07 23:33:24 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - e20a6141-5515-4ecc-b10e-a8695b4983e9 - 2862 - bronze_medium - STEP_START - Started execution of step "bronze_medium".
+WARNING:urllib3.connectionpool:Retrying (Retry(total=9, connect=1, read=0, redirect=None, status=None)) after connection broken by 'ReadTimeoutError("HTTPConnectionPool(host='binance-connector', port=8000): Read timed out. (read timeout=2)")': /health
+2026-03-07 23:34:23 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - e20a6141-5515-4ecc-b10e-a8695b4983e9 - 2862 - bronze_medium - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-07 23:34:25 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - e20a6141-5515-4ecc-b10e-a8695b4983e9 - 2862 - bronze_medium - ASSET_MATERIALIZATION - Materialized value bronze_medium.
+2026-03-07 23:34:25 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - e20a6141-5515-4ecc-b10e-a8695b4983e9 - 2862 - bronze_medium - STEP_SUCCESS - Finished execution of step "bronze_medium" in 1m0s.

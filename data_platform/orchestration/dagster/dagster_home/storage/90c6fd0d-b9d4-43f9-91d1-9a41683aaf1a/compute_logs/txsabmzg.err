@@ -1,0 +1,5 @@
+2026-03-08 16:47:34 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 90c6fd0d-b9d4-43f9-91d1-9a41683aaf1a - 714 - LOGS_CAPTURED - Started capturing logs in process (pid: 714).
+2026-03-08 16:47:34 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 90c6fd0d-b9d4-43f9-91d1-9a41683aaf1a - 714 - bronze_medium - STEP_START - Started execution of step "bronze_medium".
+2026-03-08 16:47:36 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 90c6fd0d-b9d4-43f9-91d1-9a41683aaf1a - 714 - bronze_medium - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 16:47:36 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 90c6fd0d-b9d4-43f9-91d1-9a41683aaf1a - 714 - bronze_medium - ASSET_MATERIALIZATION - Materialized value bronze_medium.
+2026-03-08 16:47:36 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 90c6fd0d-b9d4-43f9-91d1-9a41683aaf1a - 714 - bronze_medium - STEP_SUCCESS - Finished execution of step "bronze_medium" in 2.29s.

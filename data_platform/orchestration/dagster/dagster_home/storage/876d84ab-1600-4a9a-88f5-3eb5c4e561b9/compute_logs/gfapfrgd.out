@@ -1,0 +1,10 @@
+[bronze][SKIP] No ONCHAIN_PROVIDER_URL. Skipping OnChain.
+Starting parallel fetch for 6 collectors...
+[BinanceLocalCollector][SKIP] API en http://binance-connector:8000 inalcanzable o lenta. Omitiendo llamadas locales para no atascar.
+[bronze][SKIP] binance_local_api/market_snapshot (Fetch: 0.00s): no rows
+[bronze][WARN] binance_public/derivatives_snapshot: [Errno 13] Permission denied: 'C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/binance_public/derivatives_snapshot/dt=2026-03-07/hour=23'
+[bronze][WARN] binance_public/derivatives_flow: [Errno 13] Permission denied: 'C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/binance_public/derivatives_flow/dt=2026-03-07/hour=23'
+[bronze][WARN] bybit_public/futures_snapshot: [Errno 13] Permission denied: 'C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/bybit_public/futures_snapshot/dt=2026-03-07/hour=23'
+[bronze][WARN] okx_public/futures_snapshot: [Errno 13] Permission denied: 'C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/okx_public/futures_snapshot/dt=2026-03-07/hour=23'
+[bronze][WARN] hyperliquid/meta_and_ctx: [Errno 13] Permission denied: 'C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/hyperliquid/meta_and_ctx/dt=2026-03-07/hour=23'
+Total bronze run time: 742.22s

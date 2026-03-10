@@ -1,0 +1,33 @@
+2026-03-06 11:59:51 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 0a8ccb7a-c30b-4553-a488-23c0dd276d4f - 12375 - LOGS_CAPTURED - Started capturing logs in process (pid: 12375).
+2026-03-06 11:59:51 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 0a8ccb7a-c30b-4553-a488-23c0dd276d4f - 12375 - execute_pending_orders - STEP_START - Started execution of step "execute_pending_orders".
+2026-03-06 11:59:51 +0000 - dagster - INFO - 08_operacion_testnet_15m - 0a8ccb7a-c30b-4553-a488-23c0dd276d4f - execute_pending_orders - Running Order Execution: /usr/local/bin/python3.11 /app/scripts/execute_approved_orders.py
+2026-03-06 11:59:57 +0000 - dagster - ERROR - 08_operacion_testnet_15m - 0a8ccb7a-c30b-4553-a488-23c0dd276d4f - 12375 - execute_pending_orders - STEP_FAILURE - Execution of step "execute_pending_orders" failed.
+
+dagster._core.errors.DagsterExecutionStepExecutionError: Error occurred while executing op "execute_pending_orders"::
+
+RuntimeError: Order Execution failed:
+stdout=
+stderr=Traceback (most recent call last):
+  File "/app/scripts/execute_approved_orders.py", line 184, in <module>
+    execute_pending_orders(db_path, dry_run=args.dry_run)
+  File "/app/scripts/execute_approved_orders.py", line 24, in execute_pending_orders
+    conn = duckdb.connect(db_path)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+_duckdb.IOException: IO Error: Could not set lock on file "/app/artifacts/warehouse/crypto.duckdb": Conflicting lock is held in /usr/local/bin/python3.11 (PID 12373). See also https://duckdb.org/docs/stable/connect/concurrency
+
+
+Stack Trace:
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/utils.py", line 57, in op_execution_error_boundary
+    yield
+  File "/usr/local/lib/python3.11/site-packages/dagster/_utils/__init__.py", line 394, in iterate_with_context
+    next_output = next(iterator)
+                  ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 135, in _coerce_op_compute_fn_to_iterator
+    result = invoke_compute_fn(
+             ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 115, in invoke_compute_fn
+    return fn(context, **args_to_pass) if context_arg_provided else fn(**args_to_pass)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data_platform/orchestration/dagster/assets.py", line 377, in execute_pending_orders
+    raise RuntimeError(f"Order Execution failed:\nstdout={result.stdout}\nstderr={result.stderr}")
+

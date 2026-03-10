@@ -1,0 +1,6 @@
+2026-03-06 15:39:36 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - 3277 - LOGS_CAPTURED - Started capturing logs in process (pid: 3277).
+2026-03-06 15:39:36 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - 3277 - warehouse_raw_load - STEP_START - Started execution of step "warehouse_raw_load".
+2026-03-06 15:39:40 +0000 - dagster - INFO - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - warehouse_raw_load - Loaded 30 total rows into 12 tables
+2026-03-06 15:39:40 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - 3277 - warehouse_raw_load - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-06 15:39:40 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - 3277 - warehouse_raw_load - ASSET_MATERIALIZATION - Materialized value warehouse_raw_load.
+2026-03-06 15:39:40 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - b60e8e8a-adb9-4912-be9f-bd033d760ffd - 3277 - warehouse_raw_load - STEP_SUCCESS - Finished execution of step "warehouse_raw_load" in 3.96s.

@@ -1,0 +1,114 @@
+# Stack mínimo para correr: API + Dagster (SQLite, sin Postgres)
+# Uso: docker compose -f docker-compose.run.yml up -d --build
+# Nota: Usa volúmenes nombrados para evitar errores de bind mount en Windows/Docker Desktop
+
+volumes:
+  binance_artifacts:
+  binance_data_lake:
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
+      - BINANCE_TESTNET=${BINANCE_TESTNET:-true}
+      - LAKE_ROOT=/app/data_lake
+      - DBT_DUCKDB_PATH=/app/artifacts/warehouse/crypto.duckdb
+    volumes:
+      - binance_artifacts:/app/artifacts
+      - binance_data_lake:/app/data_lake
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  dagster:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    user: root
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      - DAGSTER_HOME=/app/artifacts/dagster
+      - API_BASE_URL=http://api:8000
+      - LAKE_ROOT=/app/data_lake
+      - DBT_DUCKDB_PATH=/app/artifacts/warehouse/crypto.duckdb
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
+      - BINANCE_TESTNET=${BINANCE_TESTNET:-true}
+      - FRED_API_KEY=${FRED_API_KEY}
+    volumes:
+      - binance_artifacts:/app/artifacts
+      - binance_data_lake:/app/data_lake
+    command: >
+      bash -c "
+        mkdir -p /app/artifacts/dagster/storage /app/artifacts/warehouse /app/artifacts/quant_model /app/data_lake &&
+        export DAGSTER_HOME=/app/artifacts/dagster &&
+        dagster-daemon run -w /app/data_platform/orchestration/dagster/workspace.yaml &
+        dagster-webserver -w /app/data_platform/orchestration/dagster/workspace.yaml -h 0.0.0.0 -p 3000
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/server_info"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    user: root
+    ports:
+      - "5001:5001"
+    volumes:
+      - binance_artifacts:/app/artifacts
+    command: >
+      bash -c "mkdir -p /app/artifacts/quant_model && mlflow server --backend-store-uri sqlite:////app/artifacts/quant_model/mlflow_v2.db --default-artifact-root /app/artifacts/quant_model/mlruns --host 0.0.0.0 --port 5001"
+    restart: unless-stopped
+
+  optuna:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    user: root
+    ports:
+      - "8081:8081"
+    volumes:
+      - binance_artifacts:/app/artifacts
+    command: >
+      bash -c "mkdir -p /app/artifacts/quant_model &&
+        python -c 'import sqlite3; sqlite3.connect(\"/app/artifacts/quant_model/optuna.db\").close()' &&
+        optuna-dashboard sqlite:////app/artifacts/quant_model/optuna.db --host 0.0.0.0 --port 8081"
+    restart: unless-stopped
+
+  dbt-docs:
+    build:
+      context: .
+      dockerfile: Dockerfile.dagster
+    user: root
+    ports:
+      - "8080:8080"
+    volumes:
+      - binance_artifacts:/app/artifacts
+    environment:
+      - DBT_DUCKDB_PATH=/app/artifacts/warehouse/crypto.duckdb
+    command: >
+      bash -c "mkdir -p /app/artifacts/warehouse &&
+        cd /app/data_platform/dbt &&
+        dbt docs generate --target local --profiles-dir . 2>/dev/null || true &&
+        dbt docs serve --port 8080 --host 0.0.0.0 --target local --profiles-dir ."
+    restart: unless-stopped

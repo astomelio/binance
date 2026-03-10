@@ -1,0 +1,6 @@
+2026-03-06 14:37:15 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - d07c3022-1443-4216-8c83-63ee1115443a - 15300 - LOGS_CAPTURED - Started capturing logs in process (pid: 15300).
+2026-03-06 14:37:15 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - d07c3022-1443-4216-8c83-63ee1115443a - 15300 - bronze_high - STEP_START - Started execution of step "bronze_high".
+WARNING:urllib3.connectionpool:Retrying (Retry(total=9, connect=0, read=1, redirect=None, status=None)) after connection broken by 'NameResolutionError("HTTPConnection(host='binance-connector', port=8000): Failed to resolve 'binance-connector' ([Errno -2] Name or service not known)")': /health
+2026-03-06 14:37:34 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - d07c3022-1443-4216-8c83-63ee1115443a - 15300 - bronze_high - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-06 14:37:34 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - d07c3022-1443-4216-8c83-63ee1115443a - 15300 - bronze_high - ASSET_MATERIALIZATION - Materialized value bronze_high.
+2026-03-06 14:37:34 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - d07c3022-1443-4216-8c83-63ee1115443a - 15300 - bronze_high - STEP_SUCCESS - Finished execution of step "bronze_high" in 19.89s.

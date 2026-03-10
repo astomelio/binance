@@ -138,13 +138,16 @@ def run_champion_challenger(
         rows_1h = load_jsonl_timeseries(path_1h, key_fields=("event_time", "symbol"))
         print(f"Loaded {len(rows_1h)} 1h rows")
     except Exception as e:
-        print(f"Error loading 1h: {e}")
+        print(f"Error loading 1h: {e}, falling back to DuckDB...")
         import duckdb
-        con = duckdb.connect("artifacts/warehouse/crypto.duckdb")
-        rows_dict = con.sql("select * from main.decision_features where fwd_return_4h is not null order by event_time, symbol").fetchall()
+        db_file = os.environ.get("DBT_DUCKDB_PATH", "artifacts/warehouse/crypto.duckdb")
+        con = duckdb.connect(db_file, read_only=True)
+        rows_dict = con.sql(f"select * from main.decision_features where {horizon} is not null order by event_time, symbol").fetchall()
         cols = [desc[0] for desc in con.sql("describe main.decision_features").fetchall()]
         rows_1h = [dict(zip(cols, r)) for r in rows_dict]
-        print(f"Loaded {len(rows_1h)} rows from DuckDB")
+        con.close()
+        n_syms = len(set(r.get("symbol", "") for r in rows_1h))
+        print(f"Loaded {len(rows_1h)} rows from DuckDB ({n_syms} symbols)")
     
     rows_4h = None
     if path_4h and os.path.exists(path_4h.replace("/**/*.jsonl", "")):

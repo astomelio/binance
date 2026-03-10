@@ -124,7 +124,9 @@ def _build_orders(rows: List[Dict], spec: StrategySpec) -> List[Dict]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run OOS using MLflow registered champion model")
-    parser.add_argument("--dataset", default="/Users/joaquincano/data/binance_lake/gold/signals/decision_features_backfill")
+    parser.add_argument("--dataset", default=None, help="Path to JSONL files (optional, falls back to DuckDB)")
+    parser.add_argument("--db", default=None, help="DuckDB path (default: artifacts/warehouse/crypto.duckdb)")
+    parser.add_argument("--horizon", default="4h", choices=("1h", "4h", "24h"))
     parser.add_argument("--model-uri", default="models:/quant_alpha_entry_lgbm@champion")
     parser.add_argument("--mlflow-uri", default="sqlite:///artifacts/quant_model/mlflow.db")
     parser.add_argument("--oos-days", type=int, default=14)
@@ -136,10 +138,31 @@ def main() -> None:
     parser.add_argument("--max-symbol-pct", type=float, default=0.4)
     args = parser.parse_args()
 
-    data_glob = args.dataset if "*" in args.dataset else f"{args.dataset}/**/part-*.jsonl"
-    rows = load_jsonl_timeseries(data_glob, key_fields=("event_time", "symbol"))
+    rows = None
+    if args.dataset:
+        data_glob = args.dataset if "*" in args.dataset else f"{args.dataset}/**/part-*.jsonl"
+        rows = load_jsonl_timeseries(data_glob, key_fields=("event_time", "symbol"))
+
     if not rows:
-        raise ValueError(f"No rows found for dataset: {data_glob}")
+        import os, sys
+        repo_root = Path(__file__).resolve().parent.parent
+        db_path = args.db or os.environ.get(
+            "DBT_DUCKDB_PATH",
+            str(repo_root / "artifacts" / "warehouse" / "crypto.duckdb"),
+        )
+        if not Path(db_path).exists():
+            raise ValueError(f"DuckDB not found: {db_path}")
+        sys.path.insert(0, str(repo_root))
+        from ai.data.loader import load_decision_features
+        rows = load_decision_features(
+            db_path=db_path,
+            horizon=args.horizon,
+            label_not_null=True,
+        )
+        print(f"Loaded {len(rows)} rows from DuckDB ({len(set(r.get('symbol','') for r in rows))} symbols)")
+
+    if not rows:
+        raise ValueError("No rows found (tried JSONL and DuckDB)")
 
     feature_names = [
         "alpha_microstructure_score",

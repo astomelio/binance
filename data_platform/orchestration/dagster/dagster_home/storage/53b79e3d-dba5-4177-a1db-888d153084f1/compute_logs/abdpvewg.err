@@ -1,0 +1,5 @@
+2026-03-08 14:39:56 +0000 - dagster - DEBUG - 01_datos_cripto - 53b79e3d-dba5-4177-a1db-888d153084f1 - 27541 - LOGS_CAPTURED - Started capturing logs in process (pid: 27541).
+2026-03-08 14:39:57 +0000 - dagster - DEBUG - 01_datos_cripto - 53b79e3d-dba5-4177-a1db-888d153084f1 - 27541 - bronze_high - STEP_START - Started execution of step "bronze_high".
+2026-03-08 14:40:47 +0000 - dagster - DEBUG - 01_datos_cripto - 53b79e3d-dba5-4177-a1db-888d153084f1 - 27541 - bronze_high - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 14:40:47 +0000 - dagster - DEBUG - 01_datos_cripto - 53b79e3d-dba5-4177-a1db-888d153084f1 - 27541 - bronze_high - ASSET_MATERIALIZATION - Materialized value bronze_high.
+2026-03-08 14:40:47 +0000 - dagster - DEBUG - 01_datos_cripto - 53b79e3d-dba5-4177-a1db-888d153084f1 - 27541 - bronze_high - STEP_SUCCESS - Finished execution of step "bronze_high" in 50.85s.

@@ -19,6 +19,8 @@ from data_platform.ingestion.collectors import (
     OKXFuturesCollector,
     OnChainCollector,
     BybitFuturesCollector,
+    HyperliquidCollector,
+    AsterDEXCollector,
 )
 from data_platform.storage.lake_writer import LakeWriter
 from data_platform.transforms.gold import build_decision_features
@@ -47,37 +49,96 @@ def _read_jsonl(path_pattern: str) -> List[Dict]:
     return rows
 
 
+import time
+import concurrent.futures
+
 def run_bronze(cfg: DataPlatformConfig, source_groups: Sequence[str] | None = None) -> None:
+    t_start = time.time()
     writer = LakeWriter(cfg.lake_root)
-    collectors_with_groups = [
-        ("high", BinanceLocalCollector(cfg.api_base_url, cfg.symbols)),
-        ("high", BinanceDerivativesPublicCollector(cfg.symbols)),
-        ("high", BinanceDerivativesFlowCollector(cfg.symbols)),
-        ("high", BybitFuturesCollector(cfg.symbols)),
-        ("high", OKXFuturesCollector(cfg.symbols)),
-        ("medium", CoinGeckoGlobalCollector()),
-        ("medium", FearGreedCollector()),
-        ("medium", DexScreenerCollector(cfg.dex_pairs)),
-        ("low", FREDMacroCollector(cfg.fred_api_key)),
-        ("low", FedCalendarCollector(live_url=cfg.fed_calendar_url)),
-        ("low", OnChainCollector(cfg.onchain_provider_url)),
-    ]
+    
+    # Validaciones previas para evitar llamadas muertas
+    has_symbols = bool(cfg.symbols)
+    has_dex_pairs = bool(cfg.dex_pairs)
+    has_fred_key = bool(cfg.fred_api_key)
+    has_onchain_url = bool(cfg.onchain_provider_url)
+
+    collectors_with_groups = []
+    
+    # --- HIGH FREQUENCY (Cripto) ---
+    if has_symbols:
+        collectors_with_groups.extend([
+            ("high", BinanceLocalCollector(cfg.api_base_url, cfg.symbols)),
+            ("high", BinanceDerivativesPublicCollector(cfg.symbols)),
+            ("high", BinanceDerivativesFlowCollector(cfg.symbols)),
+            ("high", BybitFuturesCollector(cfg.symbols)),
+            ("high", OKXFuturesCollector(cfg.symbols)),
+        ])
+    else:
+         print("[bronze][SKIP] No DP_SYMBOLS configured. Skipping all crypto CEX collectors.")
+
+    collectors_with_groups.append(("high", HyperliquidCollector()))
+    
+    # ("high", AsterDEXCollector(cfg.symbols)), # Desactivado por ahora
+
+    # --- MEDIUM FREQUENCY ---
+    collectors_with_groups.append(("medium", CoinGeckoGlobalCollector()))
+    collectors_with_groups.append(("medium", FearGreedCollector()))
+    
+    if has_dex_pairs:
+        collectors_with_groups.append(("medium", DexScreenerCollector(cfg.dex_pairs)))
+    else:
+        print("[bronze][SKIP] No DEX_PAIRS_JSON configured. Skipping DexScreener.")
+
+    # --- LOW FREQUENCY (Macro) ---
+    if has_fred_key:
+        collectors_with_groups.append(("low", FREDMacroCollector(cfg.fred_api_key)))
+    else:
+        print("[bronze][SKIP] No FRED_API_KEY. Skipping FRED Macro.")
+
+    collectors_with_groups.append(("low", FedCalendarCollector(live_url=cfg.fed_calendar_url)))
+    
+    if has_onchain_url:
+        collectors_with_groups.append(("low", OnChainCollector(cfg.onchain_provider_url)))
+    else:
+        print("[bronze][SKIP] No ONCHAIN_PROVIDER_URL. Skipping OnChain.")
     selected_groups = set(source_groups or ["high", "medium", "low"])
+    active_collectors = [c for g, c in collectors_with_groups if g in selected_groups]
+    
     failures: List[Tuple[str, str, str]] = []
 
-    for group, collector in collectors_with_groups:
-        if group not in selected_groups:
-            continue
+    def _collect_and_write(collector):
+        c_start = time.time()
         try:
             events = collector.collect()
+            c_fetch_time = time.time() - c_start
+            
             if not events:
-                print(f"[bronze][SKIP] {collector.source}/{collector.dataset}: no rows")
-                continue
+                return f"[bronze][SKIP] {collector.source}/{collector.dataset} (Fetch: {c_fetch_time:.2f}s): no rows"
+                
+            w_start = time.time()
             out = writer.write_events("bronze", collector.source, collector.dataset, events)
-            print(f"[bronze] {collector.source}/{collector.dataset}: {len(events)} rows -> {out}")
-        except Exception as exc:  # noqa: BLE001
-            print(f"[bronze][WARN] {collector.source}/{collector.dataset}: {exc}")
-            failures.append((collector.source, collector.dataset, str(exc)))
+            w_time = time.time() - w_start
+            
+            return f"[bronze] {collector.source}/{collector.dataset}: {len(events)} rows. (Fetch: {c_fetch_time:.2f}s, Write: {w_time:.2f}s) -> {out}"
+        except Exception as exc:
+            return f"FAIL|{collector.source}|{collector.dataset}|{str(exc)}"
+
+    # Ejecución paralela de APIs (Threads son ideales para I/O)
+    print(f"Starting parallel fetch for {len(active_collectors)} collectors...")
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(active_collectors)) as executor:
+        results = list(executor.map(_collect_and_write, active_collectors))
+
+    for res in results:
+        if res.startswith("FAIL|"):
+            _, src, ds, err = res.split("|", 3)
+            print(f"[bronze][WARN] {src}/{ds}: {err}")
+            failures.append((src, ds, err))
+        else:
+            print(res)
+
+    print(f"Total bronze run time: {time.time() - t_start:.2f}s")
+    if cfg.strict_external_sources and failures:
+        raise RuntimeError(f"Bronze failed collectors: {failures}")
 
     if cfg.strict_external_sources and failures:
         raise RuntimeError(f"Bronze failed collectors: {failures}")

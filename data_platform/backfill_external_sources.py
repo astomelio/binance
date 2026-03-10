@@ -39,15 +39,16 @@ def backfill_fear_greed(writer: LakeWriter, start_date: str = "2023-03-01") -> i
         ts = int(item.get("timestamp", 0))
         if ts == 0:
             continue
-        dt = datetime.fromtimestamp(ts, tz=timezone.utc)
-        if dt < start:
-            continue
-        events.append({
-            "event_time": dt.isoformat(),
-            "value": float(item.get("value", 0) or 0),
-            "classification": item.get("value_classification", ""),
-            "timestamp": str(ts),
-        })
+        base_dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+        # Una fila por hora para alinear con el warehouse
+        for hour in range(24):
+            dt = base_dt.replace(hour=hour, minute=0, second=0, microsecond=0)
+            events.append({
+                "event_time": dt.isoformat(),
+                "value": float(item.get("value", 0) or 0),
+                "classification": item.get("value_classification", ""),
+                "timestamp": str(ts),
+            })
     
     if events:
         writer.write_events_by_event_time("bronze", "alternative_me_historical", "fear_greed_index", events)

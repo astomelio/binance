@@ -1,0 +1,10 @@
+[bronze][SKIP] No ONCHAIN_PROVIDER_URL. Skipping OnChain.
+Starting parallel fetch for 6 collectors...
+[BinanceLocalCollector][SKIP] API en http://binance-connector:8000 inalcanzable o lenta. Omitiendo llamadas locales para no atascar.
+[bronze][SKIP] binance_local_api/market_snapshot (Fetch: 0.00s): no rows
+[bronze] binance_public/derivatives_snapshot: 42 rows. (Fetch: 13.08s, Write: 0.02s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/binance_public/derivatives_snapshot/dt=2026-03-06/hour=14/part-20260306T142235.jsonl
+[bronze] binance_public/derivatives_flow: 50 rows. (Fetch: 4.83s, Write: 0.02s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/binance_public/derivatives_flow/dt=2026-03-06/hour=14/part-20260306T142226.jsonl
+[bronze] bybit_public/futures_snapshot: 50 rows. (Fetch: 2.00s, Write: 0.02s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/bybit_public/futures_snapshot/dt=2026-03-06/hour=14/part-20260306T142223.jsonl
+[bronze] okx_public/futures_snapshot: 20 rows. (Fetch: 2.19s, Write: 0.03s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/okx_public/futures_snapshot/dt=2026-03-06/hour=14/part-20260306T142224.jsonl
+[bronze] hyperliquid/meta_and_ctx: 1 rows. (Fetch: 0.31s, Write: 0.02s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/hyperliquid/meta_and_ctx/dt=2026-03-06/hour=14/part-20260306T142222.jsonl
+Total bronze run time: 20.54s

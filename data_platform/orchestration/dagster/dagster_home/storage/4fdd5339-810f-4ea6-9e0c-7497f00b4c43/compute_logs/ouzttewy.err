@@ -1,0 +1,6 @@
+2026-03-08 13:15:46 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 4fdd5339-810f-4ea6-9e0c-7497f00b4c43 - 23477 - LOGS_CAPTURED - Started capturing logs in process (pid: 23477).
+2026-03-08 13:15:46 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 4fdd5339-810f-4ea6-9e0c-7497f00b4c43 - 23477 - bronze_high - STEP_START - Started execution of step "bronze_high".
+WARNING:urllib3.connectionpool:Retrying (Retry(total=9, connect=1, read=0, redirect=None, status=None)) after connection broken by 'ReadTimeoutError("HTTPConnectionPool(host='binance-connector', port=8000): Read timed out. (read timeout=5)")': /futures/market/ticker/TIAUSDT
+2026-03-08 13:16:43 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 4fdd5339-810f-4ea6-9e0c-7497f00b4c43 - 23477 - bronze_high - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 13:16:43 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 4fdd5339-810f-4ea6-9e0c-7497f00b4c43 - 23477 - bronze_high - ASSET_MATERIALIZATION - Materialized value bronze_high.
+2026-03-08 13:16:43 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 4fdd5339-810f-4ea6-9e0c-7497f00b4c43 - 23477 - bronze_high - STEP_SUCCESS - Finished execution of step "bronze_high" in 57.13s.

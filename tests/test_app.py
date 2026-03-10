@@ -2,30 +2,31 @@ import pytest
 import os
 import sys
 from unittest.mock import Mock, patch
-from chalice.test import Client
 
 # Add the parent directory to the path so we can import app
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from fastapi.testclient import TestClient
 from app import app
 
 @pytest.fixture
 def client():
-    """Create a test client for the Chalice app"""
-    return Client(app)
+    """Create a test client for the FastAPI app"""
+    return TestClient(app)
 
 @pytest.fixture
 def mock_binance_client():
     """Mock Binance client for testing"""
-    with patch('app.get_binance_client') as mock_client:
+    with patch("apps.api.main.get_binance_client") as mock_client:
         yield mock_client
 
 def test_health_check(client):
     """Test the health check endpoint"""
-    response = client.http.get('/health')
+    response = client.get("/health")
     assert response.status_code == 200
-    assert response.json_body['status'] == 'healthy'
-    assert response.json_body['service'] == 'binance-connector'
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert data["service"] == "binance-connector"
 
 # ============================================================================
 # SPOT TRADING TESTS
@@ -47,12 +48,13 @@ def test_get_account_info_success(client, mock_binance_client):
     
     mock_binance_client.return_value.get_account.return_value = mock_account_info
     
-    response = client.http.get('/account/info')
+    response = client.get("/account/info")
     
     assert response.status_code == 200
-    assert response.json_body['status'] == 'success'
-    assert response.json_body['data']['maker_commission'] == 15
-    assert response.json_body['data']['can_trade'] == True
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["data"]["maker_commission"] == 15
+    assert data["data"]["can_trade"] is True
 
 def test_get_account_balance_success(client, mock_binance_client):
     """Test successful account balance retrieval"""
@@ -79,17 +81,17 @@ def test_get_account_balance_success(client, mock_binance_client):
     
     mock_binance_client.return_value.get_account.return_value = mock_account_info
     
-    response = client.http.get('/account/balance')
+    response = client.get("/account/balance")
     
     assert response.status_code == 200
-    assert response.json_body['status'] == 'success'
-    
-    balances = response.json_body['data']
+    data = response.json()
+    assert data["status"] == "success"
+    balances = data["data"]
     assert len(balances) == 2  # Only BTC and USDT have non-zero balances
     
-    btc_balance = next(b for b in balances if b['asset'] == 'BTC')
-    assert btc_balance['free'] == '1.00000000'
-    assert btc_balance['total'] == '1.00000000'
+    btc_balance = next(b for b in balances if b["asset"] == "BTC")
+    assert btc_balance["free"] == "1.00000000"
+    assert float(btc_balance["total"]) == 1.0
 
 def test_get_ticker_success(client, mock_binance_client):
     """Test successful ticker retrieval"""
@@ -116,12 +118,13 @@ def test_get_ticker_success(client, mock_binance_client):
     
     mock_binance_client.return_value.get_ticker.return_value = mock_ticker
     
-    response = client.http.get('/market/ticker/BTCUSDT')
+    response = client.get("/market/ticker/BTCUSDT")
     
     assert response.status_code == 200
-    assert response.json_body['status'] == 'success'
-    assert response.json_body['data']['symbol'] == 'BTCUSDT'
-    assert response.json_body['data']['last_price'] == '4000.00'
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["data"]["symbol"] == "BTCUSDT"
+    assert data["data"]["last_price"] == "4000.00"
 
 def test_create_order_success(client, mock_binance_client):
     """Test successful order creation"""
@@ -150,12 +153,13 @@ def test_create_order_success(client, mock_binance_client):
         'quantity': 0.001
     }
     
-    response = client.http.post('/order/create', json=order_data)
+    response = client.post("/order/create", json=order_data)
     
     assert response.status_code == 200
-    assert response.json_body['status'] == 'success'
-    assert response.json_body['data']['symbol'] == 'BTCUSDT'
-    assert response.json_body['data']['order_id'] == 12345
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["data"]["symbol"] == "BTCUSDT"
+    assert data["data"]["order_id"] == 12345
 
 # ============================================================================
 # FUTURES TRADING TESTS
@@ -185,12 +189,13 @@ def test_get_futures_account_info_success(client, mock_binance_client):
     
     mock_binance_client.return_value.futures_account.return_value = mock_futures_account
     
-    response = client.http.get('/futures/account/info')
+    response = client.get("/futures/account/info")
     
     assert response.status_code == 200
-    assert response.json_body['status'] == 'success'
-    assert response.json_body['data']['can_trade'] == True
-    assert response.json_body['data']['total_wallet_balance_in_usdt'] == '1000.00000000'
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["data"]["can_trade"] is True
+    assert data["data"]["total_wallet_balance_in_usdt"] == "1000.00000000"
 
 def test_get_futures_account_balance_success(client, mock_binance_client):
     """Test successful futures account balance retrieval"""
@@ -218,14 +223,13 @@ def test_get_futures_account_balance_success(client, mock_binance_client):
     
     mock_binance_client.return_value.futures_account.return_value = mock_futures_account
     
-    response = client.http.get('/futures/account/balance')
+    response = client.get("/futures/account/balance")
     
     assert response.status_code == 200
-    assert response.json_body['status'] == 'success'
-    
-    balances = response.json_body['data']
+    data = response.json()
+    assert data["status"] == "success"
+    balances = data["data"]
     assert len(balances) == 1
-    
     usdt_balance = balances[0]
     assert usdt_balance['asset'] == 'USDT'
     assert usdt_balance['wallet_balance'] == '1000.00000000'
@@ -255,12 +259,12 @@ def test_get_futures_positions_success(client, mock_binance_client):
     
     mock_binance_client.return_value.futures_position_information.return_value = mock_positions
     
-    response = client.http.get('/futures/positions')
+    response = client.get("/futures/positions")
     
     assert response.status_code == 200
-    assert response.json_body['status'] == 'success'
-    
-    positions = response.json_body['data']
+    data = response.json()
+    assert data["status"] == "success"
+    positions = data["data"]
     assert len(positions) == 1
     
     position = positions[0]
@@ -293,12 +297,13 @@ def test_get_futures_ticker_success(client, mock_binance_client):
     
     mock_binance_client.return_value.futures_ticker.return_value = mock_ticker
     
-    response = client.http.get('/futures/market/ticker/BTCUSDT')
+    response = client.get("/futures/market/ticker/BTCUSDT")
     
     assert response.status_code == 200
-    assert response.json_body['status'] == 'success'
-    assert response.json_body['data']['symbol'] == 'BTCUSDT'
-    assert response.json_body['data']['last_price'] == '4000.00'
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["data"]["symbol"] == "BTCUSDT"
+    assert data["data"]["last_price"] == "4000.00"
 
 def test_create_futures_order_success(client, mock_binance_client):
     """Test successful futures order creation"""
@@ -340,13 +345,14 @@ def test_create_futures_order_success(client, mock_binance_client):
         'position_side': 'LONG'
     }
     
-    response = client.http.post('/futures/order/create', json=order_data)
+    response = client.post("/futures/order/create", json=order_data)
     
     assert response.status_code == 200
-    assert response.json_body['status'] == 'success'
-    assert response.json_body['data']['symbol'] == 'BTCUSDT'
-    assert response.json_body['data']['order_id'] == 12345
-    assert response.json_body['data']['position_side'] == 'LONG'
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["data"]["symbol"] == "BTCUSDT"
+    assert data["data"]["order_id"] == 12345
+    assert data["data"]["position_side"] == "LONG"
 
 def test_set_futures_leverage_success(client, mock_binance_client):
     """Test successful leverage setting"""
@@ -364,12 +370,13 @@ def test_set_futures_leverage_success(client, mock_binance_client):
         'leverage': 10
     }
     
-    response = client.http.post('/futures/leverage', json=leverage_data)
+    response = client.post("/futures/leverage", json=leverage_data)
     
     assert response.status_code == 200
-    assert response.json_body['status'] == 'success'
-    assert response.json_body['data']['leverage'] == 10
-    assert response.json_body['data']['symbol'] == 'BTCUSDT'
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["data"]["leverage"] == 10
+    assert data["data"]["symbol"] == "BTCUSDT"
 
 def test_set_futures_margin_type_success(client, mock_binance_client):
     """Test successful margin type setting"""
@@ -386,11 +393,12 @@ def test_set_futures_margin_type_success(client, mock_binance_client):
         'margin_type': 'ISOLATED'
     }
     
-    response = client.http.post('/futures/margin_type', json=margin_data)
+    response = client.post("/futures/margin_type", json=margin_data)
     
     assert response.status_code == 200
-    assert response.json_body['status'] == 'success'
-    assert response.json_body['data']['code'] == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["data"]["code"] == 200
 
 # ============================================================================
 # ERROR HANDLING TESTS
@@ -399,44 +407,41 @@ def test_set_futures_margin_type_success(client, mock_binance_client):
 def test_binance_api_error_handling(client, mock_binance_client):
     """Test error handling for Binance API errors"""
     from binance.exceptions import BinanceAPIException
-    
-    # Mock a Binance API exception
+
+    mock_response = Mock(status_code=400, text='{"code": -2011, "msg": "Invalid API key"}')
     mock_binance_client.return_value.get_account.side_effect = BinanceAPIException(
-        response=Mock(status_code=400),
-        error_code=-2011,
-        error_message="Invalid API key"
+        mock_response, 400, "Invalid API key"
     )
-    
-    response = client.http.get('/account/info')
-    
+
+    response = client.get("/account/info")
+
     assert response.status_code == 400
-    assert 'error' in response.json_body
+    assert "detail" in response.json()
 
 def test_futures_api_error_handling(client, mock_binance_client):
     """Test error handling for Binance Futures API errors"""
     from binance.exceptions import BinanceAPIException
-    
-    # Mock a Binance Futures API exception
+
+    mock_response = Mock(status_code=400, text='{"code": -2011, "msg": "Futures trading not enabled"}')
     mock_binance_client.return_value.futures_account.side_effect = BinanceAPIException(
-        response=Mock(status_code=400),
-        error_code=-2011,
-        error_message="Futures trading not enabled"
+        mock_response, 400, "Futures trading not enabled"
     )
-    
-    response = client.http.get('/futures/account/info')
-    
+
+    response = client.get("/futures/account/info")
+
     assert response.status_code == 400
-    assert 'error' in response.json_body
+    assert "detail" in response.json()
 
 def test_missing_environment_variables():
-    """Test that the app handles missing environment variables gracefully"""
-    with patch.dict(os.environ, {}, clear=True):
-        with patch('app.get_binance_client') as mock_get_client:
-            mock_get_client.side_effect = ValueError("BINANCE_API_KEY and BINANCE_SECRET_KEY must be set")
-            
-            # This should not raise an exception during import
-            import app
-            assert app is not None
+    """Test that /account/info returns 500 when Binance keys are missing"""
+    with patch("apps.api.main.get_binance_client") as mock_get_client:
+        mock_get_client.side_effect = ValueError("BINANCE_API_KEY and BINANCE_SECRET_KEY must be set")
+        from fastapi.testclient import TestClient
+        from app import app
+        client = TestClient(app)
+        response = client.get("/account/info")
+        assert response.status_code == 500
+        assert "detail" in response.json()
 
 if __name__ == '__main__':
     pytest.main([__file__])

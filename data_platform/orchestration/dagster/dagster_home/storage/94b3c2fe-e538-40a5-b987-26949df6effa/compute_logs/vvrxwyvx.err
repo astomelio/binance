@@ -1,0 +1,60 @@
+2026-03-08 14:52:24 +0000 - dagster - DEBUG - 07_optimizar_suite - 94b3c2fe-e538-40a5-b987-26949df6effa - 3090 - LOGS_CAPTURED - Started capturing logs in process (pid: 3090).
+2026-03-08 14:52:24 +0000 - dagster - DEBUG - 07_optimizar_suite - 94b3c2fe-e538-40a5-b987-26949df6effa - 3090 - quant_suite_cycle - STEP_START - Started execution of step "quant_suite_cycle".
+2026-03-08 14:52:24 +0000 - dagster - INFO - 07_optimizar_suite - 94b3c2fe-e538-40a5-b987-26949df6effa - quant_suite_cycle - Running research loop: /usr/local/bin/python3.11 /app/scripts/run_suite_cycle.py --horizon 4h --lookback-days 1000 --max-cycles 10 --max-trials 500 --cycles-before-explore 2
+2026-03-08 15:02:46 +0000 - dagster - INFO - 07_optimizar_suite - 94b3c2fe-e538-40a5-b987-26949df6effa - quant_suite_cycle - stdout (last 2000):
+
+2026-03-08 15:02:46 +0000 - dagster - INFO - 07_optimizar_suite - 94b3c2fe-e538-40a5-b987-26949df6effa - quant_suite_cycle - stderr (last 2000):
+d by drawdown limit: 0.53 >= 0.15
+Blocked by drawdown limit: 0.53 >= 0.15
+Blocked by drawdown limit: 0.54 >= 0.15
+Blocked by drawdown limit: 0.54 >= 0.15
+Blocked by drawdown limit: 0.54 >= 0.15
+Blocked by drawdown limit: 0.54 >= 0.15
+Blocked by drawdown limit: 0.54 >= 0.15
+Blocked by drawdown limit: 0.54 >= 0.15
+Blocked by drawdown limit: 0.55 >= 0.15
+Blocked by drawdown limit: 0.55 >= 0.15
+Blocked by open trades limit
+Blocked by drawdown limit: 0.55 >= 0.15
+Blocked by drawdown limit: 0.55 >= 0.15
+Blocked by open trades limit
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by open trades limit
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.56 >= 0.15
+Blocked by drawdown limit: 0.57 >= 0.15
+Blocked by drawdown limit: 0.57 >= 0.15
+Blocked by drawdown limit: 0.57 >= 0.15
+Blocked by drawdown limit: 0.57 >= 0.15
+Blocked by drawdown limit: 0.57 >= 0.15
+Blocked by drawdown limit: 0.57 >= 0.15
+Blocked by drawdown limit: 0.57 >= 0.15
+
+================================================================================
+RESEARCH LOOP FINALIZADO: 10 ciclos completados
+Champion Actual: a3e3d4669bcc490e8246567e66955933 (v5)
+Métricas Champion: Net=15.00%, Sharpe=0.00
+Estado de Investigación: exploration (Round 329)
+================================================================================
+
+
+2026-03-08 15:02:46 +0000 - dagster - DEBUG - 07_optimizar_suite - 94b3c2fe-e538-40a5-b987-26949df6effa - 3090 - quant_suite_cycle - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 15:02:46 +0000 - dagster - DEBUG - 07_optimizar_suite - 94b3c2fe-e538-40a5-b987-26949df6effa - 3090 - quant_suite_cycle - ASSET_MATERIALIZATION - Materialized value quant_suite_cycle.
+2026-03-08 15:02:46 +0000 - dagster - DEBUG - 07_optimizar_suite - 94b3c2fe-e538-40a5-b987-26949df6effa - 3090 - quant_suite_cycle - STEP_SUCCESS - Finished execution of step "quant_suite_cycle" in 10m22s.

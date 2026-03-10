@@ -1,5 +1,10 @@
+# Ejecutar desde la raiz del repo para que working_directory sea correcto.
+# Windows (evitar launcher roto): python -m dagster dev -w data_platform/orchestration/dagster/workspace.yaml
+# O: .\scripts\dagster_dev.ps1
+# En Docker, usar working_directory: /app
 load_from:
   - python_module:
       module_name: data_platform.orchestration.dagster.definitions
       attribute: defs
+      working_directory: .
 

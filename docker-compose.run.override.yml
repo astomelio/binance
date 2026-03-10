@@ -1,0 +1,49 @@
+# API usa artifacts del host = mismo DuckDB que Dagster (monitor verá operaciones del bot)
+# Dagster/execute usan api:8000 (no binance-connector) para evitar "Failed to resolve"
+# Postgres para Dagster multi-proceso (daemon + webserver)
+# Uso: docker compose -f docker-compose.run.yml -f docker-compose.run.override.yml up -d
+services:
+  api:
+    volumes:
+      - ./artifacts:/app/artifacts
+      - binance_data_lake:/app/data_lake
+  dagster-postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=dagster
+      - POSTGRES_PASSWORD=dagster
+      - POSTGRES_DB=dagster
+    volumes:
+      - dagster_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dagster -d dagster"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+  dagster:
+    depends_on:
+      api:
+        condition: service_healthy
+      dagster-postgres:
+        condition: service_healthy
+    environment:
+      - DAGSTER_HOME=/app/artifacts/dagster
+      - API_BASE_URL=http://api:8000
+      - LAKE_ROOT=/app/data_lake
+      - DBT_DUCKDB_PATH=/app/artifacts/warehouse/crypto.duckdb
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
+      - BINANCE_TESTNET=${BINANCE_TESTNET:-true}
+      - FRED_API_KEY=${FRED_API_KEY}
+      - DP_SYMBOLS=top
+      - DAGSTER_PG_HOST=dagster-postgres
+      - DAGSTER_PG_DB=dagster
+      - DAGSTER_PG_USER=dagster
+      - DAGSTER_PG_PASSWORD=dagster
+    volumes:
+      - ./artifacts:/app/artifacts
+      - binance_data_lake:/app/data_lake
+
+volumes:
+  dagster_postgres_data:

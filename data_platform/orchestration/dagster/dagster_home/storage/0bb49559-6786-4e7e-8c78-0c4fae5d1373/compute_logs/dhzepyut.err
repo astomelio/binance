@@ -1,0 +1,6 @@
+2026-03-08 10:15:17 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 0bb49559-6786-4e7e-8c78-0c4fae5d1373 - 18510 - LOGS_CAPTURED - Started capturing logs in process (pid: 18510).
+2026-03-08 10:15:17 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 0bb49559-6786-4e7e-8c78-0c4fae5d1373 - 18510 - bronze_high - STEP_START - Started execution of step "bronze_high".
+WARNING:urllib3.connectionpool:Retrying (Retry(total=9, connect=1, read=0, redirect=None, status=None)) after connection broken by 'ReadTimeoutError("HTTPConnectionPool(host='binance-connector', port=8000): Read timed out. (read timeout=5)")': /futures/market/ticker/ICPUSDT
+2026-03-08 10:16:14 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 0bb49559-6786-4e7e-8c78-0c4fae5d1373 - 18510 - bronze_high - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 10:16:14 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 0bb49559-6786-4e7e-8c78-0c4fae5d1373 - 18510 - bronze_high - ASSET_MATERIALIZATION - Materialized value bronze_high.
+2026-03-08 10:16:14 +0000 - dagster - DEBUG - 04_pipeline_datos_completo - 0bb49559-6786-4e7e-8c78-0c4fae5d1373 - 18510 - bronze_high - STEP_SUCCESS - Finished execution of step "bronze_high" in 56.18s.

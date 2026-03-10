@@ -1,59 +1,36 @@
 services:
-  # API principal con endpoints de warehouse y actions
+  # FastAPI: main API + warehouse + agent endpoints
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.full
     ports:
       - "8000:8000"
     environment:
       - BINANCE_API_KEY=${BINANCE_API_KEY}
       - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
       - BINANCE_TESTNET=${BINANCE_TESTNET:-true}
-      - LAKE_ROOT=/data/lake
-      - DBT_DUCKDB_PATH=/data/warehouse/crypto.duckdb
+      - LAKE_ROOT=/app/data_lake
+      - DBT_DUCKDB_PATH=/app/artifacts/warehouse/crypto.duckdb
     volumes:
-      - .:/app
-      - ./data_lake:/data/lake
-      - ./artifacts/warehouse:/data/warehouse
+      - ./data_lake:/app/data_lake
+      - ./artifacts:/app/artifacts
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 256M
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
+      interval: 60s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 15s
 
-  # MLflow UI para experimentos ML
-  mlflow:
-    image: python:3.10-slim
-    ports:
-      - "5001:5001"
-    volumes:
-      - ./artifacts/quant_model:/mlflow
-    working_dir: /mlflow
-    command: >
-      bash -c "pip install mlflow -q && 
-               mlflow ui --backend-store-uri sqlite:///mlflow.db --host 0.0.0.0 --port 5001"
-    restart: unless-stopped
-
-  # dbt docs con lineage
-  dbt-docs:
-    image: python:3.10-slim
-    ports:
-      - "8080:8080"
-    volumes:
-      - .:/app
-      - ./artifacts/warehouse:/data/warehouse
-    working_dir: /app
-    environment:
-      - DBT_DUCKDB_PATH=/data/warehouse/crypto.duckdb
-    command: >
-      bash -c "pip install dbt-duckdb -q &&
-               cd data_platform/dbt &&
-               dbt docs generate --target local --profiles-dir . &&
-               dbt docs serve --port 8080 --host 0.0.0.0 --target local --profiles-dir ."
-    restart: unless-stopped
-
-  # Dagster para orquestación (opcional, más pesado)
+  # Database for Dagster
   dagster-postgres:
     image: postgres:15-alpine
     environment:
@@ -68,37 +45,143 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    profiles:
-      - full
 
+  # Dagster: orchestration UI + daemon (schedules, sensors)
   dagster:
     build:
       context: .
-      dockerfile: Dockerfile.dagster
+      dockerfile: Dockerfile.full
     ports:
       - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+      dagster-postgres:
+        condition: service_healthy
     environment:
-      - DAGSTER_HOME=/app/data_platform/orchestration/dagster/dagster_home
+      - DAGSTER_HOME=/app/artifacts/dagster
+      - LAKE_ROOT=/app/data_lake
+      - DBT_DUCKDB_PATH=/app/artifacts/warehouse/crypto.duckdb
+      - API_BASE_URL=http://api:8000
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
+      - BINANCE_TESTNET=${BINANCE_TESTNET:-true}
+      - FRED_API_KEY=${FRED_API_KEY:-}
+      - DUCKDB_MEMORY_LIMIT=6GB
+      - DUCKDB_THREADS=4
+      - DUCKDB_LOAD_BATCH_SIZE=300
+      - DUCKDB_LOAD_BATCH_THRESHOLD=200
+      - DP_SYMBOLS=all
+      - MLFLOW_TRACKING_URI=sqlite:////app/artifacts/quant_model/mlflow_v2.db
       - DAGSTER_PG_HOST=dagster-postgres
       - DAGSTER_PG_DB=dagster
       - DAGSTER_PG_USER=dagster
       - DAGSTER_PG_PASSWORD=dagster
-      - API_BASE_URL=http://api:8000
-      - LAKE_ROOT=/data/lake
-      - DBT_DUCKDB_PATH=/app/artifacts/warehouse/crypto.duckdb
     volumes:
-      - .:/app
-      - ./data_lake:/data/lake
-      - ./artifacts/warehouse:/app/artifacts/warehouse
-      - ./artifacts/quant_model:/app/artifacts/quant_model
-    depends_on:
-      dagster-postgres:
-        condition: service_healthy
-      api:
-        condition: service_healthy
+      - ./data_lake:/app/data_lake
+      - ./artifacts:/app/artifacts
+      - ./data_platform:/app/data_platform
+      - ./apps:/app/apps
+      - ./trading_lib:/app/trading_lib
+      - ./scripts:/app/scripts
+      - ./ai:/app/ai
+    command: >
+      bash -c "
+        mkdir -p /app/artifacts/dagster/storage /app/artifacts/warehouse /app/artifacts/quant_model /app/data_lake &&
+        export DAGSTER_HOME=/app/artifacts/dagster &&
+        dagster-daemon run -w /app/data_platform/orchestration/dagster/workspace.yaml &
+        dagster-webserver -w /app/data_platform/orchestration/dagster/workspace.yaml -h 0.0.0.0 -p 3000
+      "
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 8G
+        reservations:
+          memory: 1G
     restart: unless-stopped
-    profiles:
-      - full
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/server_info"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # MLflow: ML experiment tracking UI
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.full
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./artifacts/quant_model:/app/artifacts/quant_model
+    command: ["mlflow", "server", "--backend-store-uri", "sqlite:////app/artifacts/quant_model/mlflow_v2.db", "--default-artifact-root", "/app/artifacts/quant_model/mlruns", "--host", "0.0.0.0", "--port", "5001"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Optuna Dashboard: hyperparameter optimization visualization
+  optuna:
+    build:
+      context: .
+      dockerfile: Dockerfile.full
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./artifacts/quant_model:/app/artifacts/quant_model
+    command: ["bash", "-c", "python -c 'import sqlite3; sqlite3.connect(\"/app/artifacts/quant_model/optuna.db\").close()' && optuna-dashboard sqlite:////app/artifacts/quant_model/optuna.db --host 0.0.0.0 --port 8081"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # dbt docs: data lineage documentation
+  dbt-docs:
+    build:
+      context: .
+      dockerfile: Dockerfile.full
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./artifacts/warehouse:/app/artifacts/warehouse
+    environment:
+      - DBT_DUCKDB_PATH=/app/artifacts/warehouse/crypto.duckdb
+    command: >
+      bash -c "
+        cd /app/data_platform/dbt &&
+        dbt docs generate --target local --profiles-dir . &&
+        dbt docs serve --port 8080 --host 0.0.0.0 --target local --profiles-dir .
+      "
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
 volumes:
   dagster_postgres_data:

@@ -14,8 +14,17 @@ if TYPE_CHECKING:
 
 
 def get_connection(db_path: str | None = None) -> DuckDBPyConnection:
+    import time
     path = db_path or get_warehouse_path()
-    return duckdb.connect(path, read_only=True)
+    for attempt in range(12):
+        try:
+            return duckdb.connect(path, read_only=True)
+        except Exception as e:
+            if "Could not set lock on file" in str(e):
+                time.sleep(5)
+            else:
+                raise
+    raise RuntimeError("Failed to acquire DuckDB lock for reading after 1 minute.")
 
 
 def load_decision_features(
@@ -25,7 +34,7 @@ def load_decision_features(
     symbols: list[str] | None = None,
     start: datetime | str | None = None,
     end: datetime | str | None = None,
-    label_not_null: bool = True,
+    label_not_null: bool = False,
 ) -> list[dict]:
     """
     Load decision_features from DuckDB.

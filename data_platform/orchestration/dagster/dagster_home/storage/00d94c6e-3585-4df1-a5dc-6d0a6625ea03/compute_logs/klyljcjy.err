@@ -1,0 +1,35 @@
+2026-03-07 21:15:37 +0000 - dagster - DEBUG - 06_entrenar_modelos - 00d94c6e-3585-4df1-a5dc-6d0a6625ea03 - 3390 - LOGS_CAPTURED - Started capturing logs in process (pid: 3390).
+2026-03-07 21:15:37 +0000 - dagster - DEBUG - 06_entrenar_modelos - 00d94c6e-3585-4df1-a5dc-6d0a6625ea03 - 3390 - quant_model_train - STEP_START - Started execution of step "quant_model_train".
+2026-03-07 21:16:09 +0000 - dagster - INFO - 06_entrenar_modelos - 00d94c6e-3585-4df1-a5dc-6d0a6625ea03 - quant_model_train - Running benchmark: /usr/local/bin/python3.11 /app/scripts/auto_train_eval.py --set-champion --horizon 4h --lookback-days 1000 --train-days 180 --test-days 30 --step-days 15
+2026-03-07 23:17:56 +0000 - dagster - ERROR - 06_entrenar_modelos - 00d94c6e-3585-4df1-a5dc-6d0a6625ea03 - 3390 - quant_model_train - STEP_FAILURE - Execution of step "quant_model_train" failed.
+
+dagster._core.errors.DagsterExecutionStepExecutionError: Error occurred while executing op "quant_model_train"::
+
+subprocess.TimeoutExpired: Command '['/usr/local/bin/python3.11', '/app/scripts/auto_train_eval.py', '--set-champion', '--horizon', '4h', '--lookback-days', '1000', '--train-days', '180', '--test-days', '30', '--step-days', '15']' timed out after 7200 seconds
+
+Stack Trace:
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/utils.py", line 57, in op_execution_error_boundary
+    yield
+  File "/usr/local/lib/python3.11/site-packages/dagster/_utils/__init__.py", line 394, in iterate_with_context
+    next_output = next(iterator)
+                  ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 135, in _coerce_op_compute_fn_to_iterator
+    result = invoke_compute_fn(
+             ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 115, in invoke_compute_fn
+    return fn(context, **args_to_pass) if context_arg_provided else fn(**args_to_pass)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data_platform/orchestration/dagster/assets.py", line 287, in quant_model_train
+    result = subprocess.run(cmd, cwd=str(REPO_ROOT), capture_output=True, text=True, env=env, timeout=7200)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/subprocess.py", line 550, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/subprocess.py", line 1209, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/subprocess.py", line 2116, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/usr/local/lib/python3.11/subprocess.py", line 1253, in _check_timeout
+    raise TimeoutExpired(
+

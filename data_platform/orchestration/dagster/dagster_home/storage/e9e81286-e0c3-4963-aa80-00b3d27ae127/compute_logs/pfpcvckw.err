@@ -1,0 +1,169 @@
+2026-03-06 13:59:06 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - e9e81286-e0c3-4963-aa80-00b3d27ae127 - 9207 - LOGS_CAPTURED - Started capturing logs in process (pid: 9207).
+2026-03-06 13:59:06 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - e9e81286-e0c3-4963-aa80-00b3d27ae127 - 9207 - stock_market_ingest - STEP_START - Started execution of step "stock_market_ingest".
+2026-03-06 13:59:06 +0000 - dagster - INFO - 08_operacion_testnet_15m - e9e81286-e0c3-4963-aa80-00b3d27ae127 - stock_market_ingest - Running stock market ingest: /usr/local/bin/python3.11 /app/data_platform/loaders/stock_market_loader.py
+2026-03-06 13:59:12 +0000 - dagster - ERROR - 08_operacion_testnet_15m - e9e81286-e0c3-4963-aa80-00b3d27ae127 - stock_market_ingest - Stock ingest failed (exit 1):
+stdout:
+(empty)
+stderr:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/dlt/destinations/sql_client.py", line 479, in _wrap
+    return f(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/destinations/impl/duckdb/sql_client.py", line 121, in open_connection
+    self._conn = self.credentials.conn_pool.borrow_conn(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/destinations/impl/duckdb/configuration.py", line 131, in borrow_conn
+    new_conn = duckdb.connect(
+               ^^^^^^^^^^^^^^^
+_duckdb.IOException: IO Error: Could not set lock on file "/app/artifacts/warehouse/crypto.duckdb": Conflicting lock is held in /usr/local/bin/python3.11 (PID 9718). See also https://duckdb.org/docs/stable/connect/concurrency
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 616, in load
+    runner.run_pool(load_step.config, load_step)
+  File "/usr/local/lib/python3.11/site-packages/dlt/common/runners/pool_runner.py", line 208, in run_pool
+    while _run_func():
+          ^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/common/runners/pool_runner.py", line 201, in _run_func
+    run_metrics = run_f.run(cast(TExecutor, pool))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/load/load.py", line 696, in run
+    self.load_single_package(load_id, schema)
+  File "/usr/local/lib/python3.11/site-packages/dlt/load/load.py", line 598, in load_single_package
+    running_jobs = self.initialize_package(load_id, schema, new_jobs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/load/load.py", line 538, in initialize_package
+    with self.get_destination_client(schema) as job_client:
+  File "/usr/local/lib/python3.11/site-packages/dlt/destinations/job_client_impl.py", line 426, in __enter__
+    self.sql_client.open_connection()
+  File "/usr/local/lib/python3.11/site-packages/dlt/destinations/sql_client.py", line 487, in _wrap
+    raise DestinationConnectionError(type(self).__name__, self.dataset_name, str(ex), ex)
+dlt.destinations.exceptions.DestinationConnectionError: Connection with `client_type=DuckDbSqlClient` to `dataset_name=main` failed. Please check if you configured the credentials at all and provided the right credentials values. You can be also denied access or your internet connection may be down. The actual reason given is: IO Error: Could not set lock on file "/app/artifacts/warehouse/crypto.duckdb": Conflicting lock is held in /usr/local/bin/python3.11 (PID 9718). See also https://duckdb.org/docs/stable/connect/concurrency
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/data_platform/loaders/stock_market_loader.py", line 117, in <module>
+    load_info = pipeline.run(stock_market_source(symbols=test_symbols))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 224, in _wrap
+    step_info = f(self, *args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 272, in _wrap
+    return f(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 761, in run
+    return self.load(destination, dataset_name, credentials=credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 224, in _wrap
+    step_info = f(self, *args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 164, in _wrap
+    return f(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 272, in _wrap
+    return f(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 626, in load
+    raise PipelineStepFailed(self, "load", err_load_id, l_ex, step_info) from l_ex
+dlt.pipeline.exceptions.PipelineStepFailed: Pipeline execution failed at `step=load` when processing package with `load_id=1772805549.2496555` with exception:
+
+<class 'dlt.destinations.exceptions.DestinationConnectionError'>
+Connection with `client_type=DuckDbSqlClient` to `dataset_name=main` failed. Please check if you configured the credentials at all and provided the right credentials values. You can be also denied access or your internet connection may be down. The actual reason given is: IO Error: Could not set lock on file "/app/artifacts/warehouse/crypto.duckdb": Conflicting lock is held in /usr/local/bin/python3.11 (PID 9718). See also https://duckdb.org/docs/stable/connect/concurrency
+
+Pending packages are left in the pipeline and will be re-tried on the next pipeline run. If you pass new data to extract to next run, it will be ignored. Run `dlt pipeline stock_market_pipeline info` for more information or `dlt pipeline stock_market_pipeline drop-pending-packages` to drop pending packages.
+
+2026-03-06 13:59:13 +0000 - dagster - ERROR - 08_operacion_testnet_15m - e9e81286-e0c3-4963-aa80-00b3d27ae127 - 9207 - stock_market_ingest - STEP_FAILURE - Execution of step "stock_market_ingest" failed.
+
+dagster._core.errors.DagsterExecutionStepExecutionError: Error occurred while executing op "stock_market_ingest"::
+
+RuntimeError: Stock ingest failed (exit 1):
+stdout:
+(empty)
+stderr:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/dlt/destinations/sql_client.py", line 479, in _wrap
+    return f(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/destinations/impl/duckdb/sql_client.py", line 121, in open_connection
+    self._conn = self.credentials.conn_pool.borrow_conn(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/destinations/impl/duckdb/configuration.py", line 131, in borrow_conn
+    new_conn = duckdb.connect(
+               ^^^^^^^^^^^^^^^
+_duckdb.IOException: IO Error: Could not set lock on file "/app/artifacts/warehouse/crypto.duckdb": Conflicting lock is held in /usr/local/bin/python3.11 (PID 9718). See also https://duckdb.org/docs/stable/connect/concurrency
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 616, in load
+    runner.run_pool(load_step.config, load_step)
+  File "/usr/local/lib/python3.11/site-packages/dlt/common/runners/pool_runner.py", line 208, in run_pool
+    while _run_func():
+          ^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/common/runners/pool_runner.py", line 201, in _run_func
+    run_metrics = run_f.run(cast(TExecutor, pool))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/load/load.py", line 696, in run
+    self.load_single_package(load_id, schema)
+  File "/usr/local/lib/python3.11/site-packages/dlt/load/load.py", line 598, in load_single_package
+    running_jobs = self.initialize_package(load_id, schema, new_jobs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/load/load.py", line 538, in initialize_package
+    with self.get_destination_client(schema) as job_client:
+  File "/usr/local/lib/python3.11/site-packages/dlt/destinations/job_client_impl.py", line 426, in __enter__
+    self.sql_client.open_connection()
+  File "/usr/local/lib/python3.11/site-packages/dlt/destinations/sql_client.py", line 487, in _wrap
+    raise DestinationConnectionError(type(self).__name__, self.dataset_name, str(ex), ex)
+dlt.destinations.exceptions.DestinationConnectionError: Connection with `client_type=DuckDbSqlClient` to `dataset_name=main` failed. Please check if you configured the credentials at all and provided the right credentials values. You can be also denied access or your internet connection may be down. The actual reason given is: IO Error: Could not set lock on file "/app/artifacts/warehouse/crypto.duckdb": Conflicting lock is held in /usr/local/bin/python3.11 (PID 9718). See also https://duckdb.org/docs/stable/connect/concurrency
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/data_platform/loaders/stock_market_loader.py", line 117, in <module>
+    load_info = pipeline.run(stock_market_source(symbols=test_symbols))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 224, in _wrap
+    step_info = f(self, *args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 272, in _wrap
+    return f(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 761, in run
+    return self.load(destination, dataset_name, credentials=credentials)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 224, in _wrap
+    step_info = f(self, *args, **kwargs)
+                ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 164, in _wrap
+    return f(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 272, in _wrap
+    return f(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dlt/pipeline/pipeline.py", line 626, in load
+    raise PipelineStepFailed(self, "load", err_load_id, l_ex, step_info) from l_ex
+dlt.pipeline.exceptions.PipelineStepFailed: Pipeline execution failed at `step=load` when processing package with `load_id=1772805549.2496555` with exception:
+
+<class 'dlt.destinations.exceptions.DestinationConnectionError'>
+Connection with `client_type=DuckDbSqlClient` to `dataset_name=main` failed. Please check if you configured the credentials at all and provided the right credentials values. You can be also denied access or your internet connection may be down. The actual reason given is: IO Error: Could not set lock on file "/app/artifacts/warehouse/crypto.duckdb": Conflicting lock is held in /usr/local/bin/python3.11 (PID 9718). See also https://duckdb.org/docs/stable/connect/concurrency
+
+Pending packages are left in the pipeline and will be re-tried on the next pipeline run. If you pass new data to extract to next run, it will be ignored. Run `dlt pipeline stock_market_pipeline info` for more information or `dlt pipeline stock_market_pipeline drop-pending-packages` to drop pending packages.
+
+
+Stack Trace:
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/utils.py", line 57, in op_execution_error_boundary
+    yield
+  File "/usr/local/lib/python3.11/site-packages/dagster/_utils/__init__.py", line 394, in iterate_with_context
+    next_output = next(iterator)
+                  ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 135, in _coerce_op_compute_fn_to_iterator
+    result = invoke_compute_fn(
+             ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 115, in invoke_compute_fn
+    return fn(context, **args_to_pass) if context_arg_provided else fn(**args_to_pass)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data_platform/orchestration/dagster/assets.py", line 108, in stock_market_ingest
+    raise RuntimeError(err_msg)
+

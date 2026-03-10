@@ -1,8 +1,6 @@
-"""Backtest: vectores de asignación (0=nada, 0.2=20% long, -0.2=20% short)."""
+"""Backtest: compute_allocations + RiskEngine (mismo flujo que live)."""
 
 from __future__ import annotations
-
-from trading_lib import FeeModel
 
 from ai.allocation.backtest import run_allocation_backtest
 from ai.data.loader import load_decision_features
@@ -16,12 +14,12 @@ def run_backtest(
     slippage_percent: float = 0.0,
     min_quote_volume_24h: float | None = None,
     prob_threshold: float = 0.55,
+    use_risk_engine: bool = True,
+    risk_engine_params: dict | None = None,
 ):
     """
-    Backtest con vectores de asignación.
-    En cada event_time: allocation[symbol] = 0 (nada), 0.2 (20% long), -0.2 (20% short).
-    Retorno = sum(alloc * fwd_return). Fees y slippage sobre cambios de posición.
-    min_quote_volume_24h: excluir símbolos con volumen (USD) por debajo de este umbral.
+    Backtest: compute_allocations (probado) + RiskEngine.
+    use_risk_engine=True: aplica RiskEngine al sizing (mismo que live).
     """
     rows = load_decision_features(
         horizon=horizon,
@@ -36,7 +34,8 @@ def run_backtest(
     def _compute(features: dict, _ts: str):
         return compute_allocations(
             features,
-            prob_threshold=prob_threshold,
+            long_threshold=prob_threshold,
+            short_threshold=-prob_threshold,
             min_allocation=0.1,
             max_allocation=0.4,
             max_exposure=1.0,
@@ -50,17 +49,22 @@ def run_backtest(
         min_quote_volume_24h=min_quote_volume_24h,
         compute_fn=_compute,
         symbols=symbols,
+        use_risk_engine=use_risk_engine,
+        risk_engine_params=risk_engine_params,
     )
 
     log_run(
         run_type="backtest",
-        config={"horizon": horizon, "symbols": symbols, "prob_threshold": prob_threshold},
+        config={"horizon": horizon, "symbols": symbols, "prob_threshold": prob_threshold, "use_risk_engine": use_risk_engine},
         metrics={
             "trades": result.trades_count,
             "total_return_percent": result.total_return_percent,
             "net_return_percent": result.net_return_percent,
             "total_fees_percent": result.total_fees_percent,
             "total_slippage_percent": result.total_slippage_percent,
+            "max_drawdown_percent": result.max_drawdown_percent,
+            "sharpe_ratio": result.sharpe_ratio,
+            "win_rate_percent": result.win_rate_percent,
             "by_symbol": result.by_symbol,
         },
         data_rows=rows,

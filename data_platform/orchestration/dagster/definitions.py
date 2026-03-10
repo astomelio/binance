@@ -1,92 +1,98 @@
 from __future__ import annotations
 
-from dagster import Definitions
+from dagster import Definitions, multiprocess_executor
 
 from .assets import (
-    bronze_high_ingestion,
-    bronze_low_ingestion,
-    bronze_medium_ingestion,
-    gold_high_features,
-    gold_low_features,
-    gold_medium_features,
+    bronze_high,
+    bronze_low,
+    bronze_medium,
+    stock_market_ingest,
+    news_sentiment_analysis,
+    x_account_tracking,
     quant_model_train,
     quant_suite_cycle,
-    silver_high_transform,
-    silver_low_transform,
-    silver_medium_transform,
+    quant_risk_optimize,
+    quant_risk_evaluation,
+    execute_pending_orders,
     warehouse_dbt_build,
     warehouse_raw_load,
+    ml_metadata_sync,
 )
+from .dbt_assets import trading_dbt_assets, dbt_resource
+from .backfill_ops import backfill_full_job, reload_external_job
 from .jobs import (
-    crypto_lake_full_job,
-    crypto_lake_full_plus_train_job,
-    crypto_lake_high_job,
-    crypto_lake_low_job,
-    crypto_lake_medium_job,
+    bronze_high_job,
+    bronze_low_job,
+    bronze_medium_job,
+    data_pipeline_job,
+    execution_only_job,
+    full_pipeline_job,
+    ml_train_suite_job,
     quant_suite_job,
+    risk_optimize_job,
+    trading_execution_job,
 )
 from .schedules import (
-    crypto_lake_full_hourly_schedule,
-    crypto_lake_full_plus_train_weekly_schedule,
-    crypto_lake_full_schedule,
-    crypto_lake_high_schedule,
-    crypto_lake_low_schedule,
-    crypto_lake_medium_schedule,
-    quant_suite_daily_schedule,
+    bronze_high_schedule,
+    bronze_low_schedule,
+    bronze_medium_schedule,
+    data_pipeline_hourly_schedule,
+    execution_only_schedule,
+    full_pipeline_weekly_schedule,
+    ml_train_suite_schedule,
+    quant_suite_schedule,
+    trading_execution_schedule,
 )
 
-base_assets = [
-    bronze_high_ingestion,
-    silver_high_transform,
-    gold_high_features,
-    bronze_medium_ingestion,
-    silver_medium_transform,
-    gold_medium_features,
-    bronze_low_ingestion,
-    silver_low_transform,
-    gold_low_features,
+# Assets: Python-defined + dbt (si manifest existe; si no, trading_dbt_assets es [])
+_asset_list = [
+    bronze_high,
+    bronze_medium,
+    bronze_low,
+    stock_market_ingest,
+    news_sentiment_analysis,
+    x_account_tracking,
     warehouse_raw_load,
+    ml_metadata_sync,
     warehouse_dbt_build,
     quant_model_train,
     quant_suite_cycle,
+    quant_risk_optimize,
+    quant_risk_evaluation,
+    execute_pending_orders,
 ]
-resources = {}
-
-# dbt integration is optional; loaded only if dagster-dbt is installed and manifest exists.
-try:
-    from pathlib import Path
-
-    from dagster_dbt import DbtCliResource
-
-    from .dbt_assets import DBT_PROJECT_DIR, dbt_crypto_assets
-
-    manifest_path = DBT_PROJECT_DIR / "target" / "manifest.json"
-    if manifest_path.exists():
-        base_assets.append(dbt_crypto_assets)
-        resources["dbt"] = DbtCliResource(project_dir=DBT_PROJECT_DIR)
-except Exception:
-    pass
-
+if not isinstance(trading_dbt_assets, list):
+    _asset_list.append(trading_dbt_assets)
 
 defs = Definitions(
-    assets=base_assets,
+    executor=multiprocess_executor.configured({"max_concurrent": 1}),
+    assets=_asset_list,
     jobs=[
-        crypto_lake_high_job,
-        crypto_lake_medium_job,
-        crypto_lake_low_job,
-        crypto_lake_full_job,
-        crypto_lake_full_plus_train_job,
+        backfill_full_job,
+        reload_external_job,
+        bronze_high_job,
+        bronze_medium_job,
+        bronze_low_job,
+        data_pipeline_job,
+        execution_only_job,
+        full_pipeline_job,
+        ml_train_suite_job,
         quant_suite_job,
+        risk_optimize_job,
+        trading_execution_job,
     ],
     schedules=[
-        crypto_lake_high_schedule,
-        crypto_lake_medium_schedule,
-        crypto_lake_low_schedule,
-        crypto_lake_full_schedule,
-        crypto_lake_full_hourly_schedule,
-        crypto_lake_full_plus_train_weekly_schedule,
-        quant_suite_daily_schedule,
+        bronze_high_schedule,
+        bronze_medium_schedule,
+        bronze_low_schedule,
+        data_pipeline_hourly_schedule,
+        execution_only_schedule,
+        full_pipeline_weekly_schedule,
+        ml_train_suite_schedule,
+        quant_suite_schedule,
+        trading_execution_schedule,
     ],
-    resources=resources,
+    resources={
+        "dbt": dbt_resource,
+    } if dbt_resource else {},
 )
-

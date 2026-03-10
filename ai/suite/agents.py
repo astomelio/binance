@@ -5,7 +5,10 @@ Reutilizan ExplorationAgent, backtest y lógica existente.
 
 from __future__ import annotations
 
+import json
+import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from ai.suite.types import (
@@ -51,7 +54,7 @@ class ExplorationTuningAgent:
             return []
         sorted_results = sorted(
             results,
-            key=lambda r: r.net_return_percent,
+            key=lambda r: r.fitness,
             reverse=True,
         )[: self.max_candidates]
         return [
@@ -63,6 +66,9 @@ class ExplorationTuningAgent:
                     "trades_count": r.trades_count,
                     "total_return_percent": r.total_return_percent,
                     "fees_percent": r.fees_percent,
+                    "max_drawdown_percent": r.max_drawdown_percent,
+                    "sharpe_ratio": r.sharpe_ratio,
+                    "fitness": r.fitness,
                 },
             )
             for r in sorted_results
@@ -128,6 +134,9 @@ class OptimizerTuningAgent:
                     "trades_count": r.trades_count,
                     "total_return_percent": r.total_return_percent,
                     "fees_percent": r.fees_percent,
+                    "max_drawdown_percent": r.max_drawdown_percent,
+                    "sharpe_ratio": r.sharpe_ratio,
+                    "fitness": r.fitness,
                 },
             )
             for r in top
@@ -185,6 +194,11 @@ class BacktestDecisionAgent:
                     "net_return_percent": res.net_return_percent,
                     "trades_count": res.trades_count,
                     "total_fees_percent": res.total_fees_percent,
+                    "max_drawdown_percent": res.max_drawdown_percent,
+                    "sharpe_ratio": res.sharpe_ratio,
+                    "win_rate_percent": res.win_rate_percent,
+                    "periods": res.periods,
+                    "equity_curve": getattr(res, "equity_curve", []),
                 }
             else:
                 # Champion puede ser modelo MLflow; aquí fallback: backtest con estrategia por defecto
@@ -193,6 +207,11 @@ class BacktestDecisionAgent:
                     "net_return_percent": res.net_return_percent,
                     "trades_count": res.trades_count,
                     "total_fees_percent": res.total_fees_percent,
+                    "max_drawdown_percent": res.max_drawdown_percent,
+                    "sharpe_ratio": res.sharpe_ratio,
+                    "win_rate_percent": res.win_rate_percent,
+                    "periods": res.periods,
+                    "equity_curve": getattr(res, "equity_curve", []),
                 }
         else:
             # Sin champion: un backtest genérico para tener números
@@ -201,6 +220,11 @@ class BacktestDecisionAgent:
                 "net_return_percent": res.net_return_percent,
                 "trades_count": res.trades_count,
                 "total_fees_percent": res.total_fees_percent,
+                "max_drawdown_percent": res.max_drawdown_percent,
+                "sharpe_ratio": res.sharpe_ratio,
+                "win_rate_percent": res.win_rate_percent,
+                "periods": res.periods,
+                "equity_curve": getattr(res, "equity_curve", []),
             }
 
         candidates_backtest: list[dict[str, Any]] = []
@@ -228,6 +252,11 @@ class BacktestDecisionAgent:
                         "candidate_id": c.id,
                         "net_return_percent": single.net_return_percent,
                         "trades_count": single.trades_count,
+                        "max_drawdown_percent": single.max_drawdown_percent,
+                        "sharpe_ratio": single.sharpe_ratio,
+                        "win_rate_percent": single.win_rate_percent,
+                        "periods": single.periods,
+                        "fitness": single.fitness,
                     })
 
         times = sorted(set(r.get("event_time", "") for r in data if r.get("event_time")))
@@ -242,15 +271,17 @@ class BacktestDecisionAgent:
 
 
 class DefaultReportAgent:
-    """ReportAgent: construye SuiteReport con recomendación simple."""
+    """ReportAgent: construye SuiteReport con recomendación, comparación de modelos y champion timeline."""
 
     def __init__(
         self,
         promote_min_net_return: float = 0.5,
         promote_min_trades: int = 5,
+        report_dir: str | None = None,
     ):
         self.promote_min_net_return = promote_min_net_return
         self.promote_min_trades = promote_min_trades
+        self.report_dir = report_dir
 
     def run(
         self,
@@ -260,48 +291,209 @@ class DefaultReportAgent:
     ) -> SuiteReport:
         rec = "no_promote"
         reason = "No candidates or no improvement."
-        best_candidate_net = None
-        champion_net = (decision_result.champion_backtest or {}).get("net_return_percent")
-        champion_trades = (decision_result.champion_backtest or {}).get("trades_count", 0)
+        
+        # --- NUEVO: Comparación con Realidad (Paper/Testnet) ---
+        real_pnl = 0.0
+        real_trades = 0
+        real_win_rate = 0.0
+        try:
+            from pathlib import Path
+            import duckdb
+            db_path = os.environ.get("DBT_DUCKDB_PATH", "artifacts/warehouse/crypto.duckdb")
+            if Path(db_path).exists():
+                conn = duckdb.connect(db_path, read_only=True)
+                # Obtenemos pnl realizado del champion actual (o de todos si no hay champion_id)
+                model_filter = f"WHERE model_id LIKE '%{state.champion_id}%'" if state.champion_id else ""
+                row = conn.execute(f"SELECT COUNT(*), COALESCE(SUM(realized_pnl), 0), SUM(CASE WHEN realized_pnl > 0 THEN 1 ELSE 0 END) FROM fct_order_history {model_filter}").fetchone()
+                if row and row[0] > 0:
+                    real_trades = row[0]
+                    real_pnl = float(row[1])
+                    real_win_rate = (row[2] / row[0]) * 100.0
+                conn.close()
+        except Exception as e:
+            # Silencioso si falla, no queremos romper el reporte
+            pass
+
+        # Obtenemos métricas del champion actual (si existe)
+        champion_metrics = decision_result.champion_backtest or {}
+        champion_net = champion_metrics.get("net_return_percent")
+        champion_mdd = champion_metrics.get("max_drawdown_percent", 99.0)
+        champion_sharpe = champion_metrics.get("sharpe_ratio", 0.0)
+        
+        # Fitness del champion: Sharpe - penalización por DD
+        champion_fitness = champion_sharpe - 0.2 * champion_mdd if champion_net is not None else -999.0
+
+        # --- NUEVO: Penalización por Discrepancia con Realidad ---
+        # Si el champion tiene trades reales y el PnL es negativo mientras el backtest es muy positivo,
+        # bajamos artificialmente su fitness para que sea más fácil que un challenger lo supere.
+        if real_trades > 5 and real_pnl < 0 and champion_net and champion_net > 0:
+            discrepancy_penalty = abs(real_pnl) / 100.0 # Ajuste heurístico
+            champion_fitness -= discrepancy_penalty
+            reason = f"Champion penalized for poor real performance (PnL: {real_pnl:.2f}, Backtest: {champion_net:.2f}%)"
 
         best_candidate_id = ""
         best_candidate_config: dict[str, Any] = {}
+        best_candidate_metrics = {}
+
         if tuning_candidates:
+            # Seleccionamos al mejor candidato basándonos en FITNESS (riesgo/retorno)
             best = max(
                 tuning_candidates,
-                key=lambda c: c.metrics.get("net_return_percent", -999) or -999,
+                key=lambda c: c.metrics.get("fitness", -999) or -999,
             )
-            best_candidate_net = best.metrics.get("net_return_percent")
-            best_trades = best.metrics.get("trades_count", 0)
+            cand_net = best.metrics.get("net_return_percent")
+            cand_mdd = best.metrics.get("max_drawdown_percent", 99.0)
+            cand_fitness = best.metrics.get("fitness", -999.0)
+            cand_trades = best.metrics.get("trades_count", 0)
+            
             best_candidate_id = best.id
             best_candidate_config = dict(best.config)
-            if best_candidate_net is not None and best_trades >= self.promote_min_trades:
-                if best_candidate_net >= self.promote_min_net_return:
-                    if champion_net is None or best_candidate_net > champion_net:
+            best_candidate_metrics = best.metrics
+
+            if cand_net is not None and cand_trades >= self.promote_min_trades:
+                # Criterios de promoción: 
+                # 1. Retorno mínimo
+                # 2. Drawdown no excesivo (ej. < 20%)
+                # 3. Fitness mejor que el champion actual
+                if cand_net >= self.promote_min_net_return:
+                    if cand_mdd > 20.0:
+                        reason = f"Candidate {best.id} has excessive drawdown ({cand_mdd:.2f}%)"
+                    elif champion_net is None or cand_fitness > champion_fitness:
                         rec = "promote"
-                        reason = f"Candidate {best.id} net_return={best_candidate_net:.2f}% > champion {champion_net}"
+                        reason = f"Candidate {best.id} fitness={cand_fitness:.2f} > champion={champion_fitness:.2f} (MDD: {cand_mdd:.2f}%)"
                     else:
-                        reason = f"Candidate net {best_candidate_net:.2f}% <= champion {champion_net}"
+                        reason = f"Candidate fitness {cand_fitness:.2f} <= champion {champion_fitness:.2f}"
                 else:
-                    reason = f"Candidate net {best_candidate_net:.2f}% < min {self.promote_min_net_return}%"
+                    reason = f"Candidate net {cand_net:.2f}% < min {self.promote_min_net_return}%"
             else:
-                reason = f"Candidate trades {best_trades} < min {self.promote_min_trades} or no net_return"
+                reason = f"Candidate trades {cand_trades} < min {self.promote_min_trades} or no net_return"
+
+        # Comparación de modelos y champion timeline
+        from ai.allocation.backtest_report import (
+            build_champion_timeline,
+            build_model_comparison,
+            ChampionSnapshot,
+            write_backtest_report,
+        )
+
+        comparison_inputs = []
+        if state.champion_id and decision_result.champion_backtest:
+            cb = decision_result.champion_backtest
+            cb["fitness"] = cb.get("sharpe_ratio", 0) - 0.2 * cb.get("max_drawdown_percent", 0)
+            comparison_inputs.append((state.champion_id, cb))
+        for c in decision_result.candidates_backtest:
+            cid = c.get("candidate_id", "unknown")
+            comparison_inputs.append((cid, c))
+        model_comparison = build_model_comparison(
+            comparison_inputs,
+            style_map={"alpha_score": "alpha_score", "mean_reversion": "mean_reversion", "heuristic": "heuristic"},
+        )
+
+        champion_snapshot = None
+        if state.champion_id and decision_result.champion_backtest:
+            cb = decision_result.champion_backtest
+            champion_snapshot = ChampionSnapshot(
+                champion_id=state.champion_id,
+                version=state.version,
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                net_return_percent=cb.get("net_return_percent", 0),
+                max_drawdown_percent=cb.get("max_drawdown_percent", 0),
+                sharpe_ratio=cb.get("sharpe_ratio", 0),
+                win_rate_percent=cb.get("win_rate_percent", 0),
+                trades_count=cb.get("trades_count", 0),
+                periods=cb.get("periods", 0),
+                equity_curve=cb.get("equity_curve", [])[:500],
+                config=state.champion_config,
+            )
+        champion_timeline = {}
+        timeline_path = Path(self.report_dir or "artifacts/quant_model") / "champion_timeline.json"
+        try:
+            snapshots = []
+            if timeline_path.exists():
+                data = json.loads(timeline_path.read_text(encoding="utf-8"))
+                for s in data.get("snapshots", []):
+                    if isinstance(s, dict):
+                        snapshots.append(ChampionSnapshot(
+                            champion_id=s.get("champion_id", ""),
+                            version=s.get("version", 0),
+                            timestamp=s.get("timestamp", ""),
+                            net_return_percent=s.get("net_return_percent", 0),
+                            max_drawdown_percent=s.get("max_drawdown_percent", 0),
+                            sharpe_ratio=s.get("sharpe_ratio", 0),
+                            win_rate_percent=s.get("win_rate_percent", 0),
+                            trades_count=s.get("trades_count", 0),
+                            periods=s.get("periods", 0),
+                ))
+            if champion_snapshot:
+                snapshots.append(champion_snapshot)
+                timeline_path.parent.mkdir(parents=True, exist_ok=True)
+                timeline_path.write_text(
+                    json.dumps({
+                        "snapshots": [
+                            {
+                                "champion_id": s.champion_id,
+                                "version": s.version,
+                                "timestamp": s.timestamp,
+                                "net_return_percent": s.net_return_percent,
+                                "max_drawdown_percent": s.max_drawdown_percent,
+                                "sharpe_ratio": s.sharpe_ratio,
+                                "win_rate_percent": s.win_rate_percent,
+                                "trades_count": s.trades_count,
+                                "periods": s.periods,
+                            }
+                            for s in snapshots[-20:]
+                        ],
+                    }, indent=2),
+                    encoding="utf-8",
+                )
+            champion_timeline = build_champion_timeline(snapshots[-10:])
+        except Exception:
+            pass
+
+        if self.report_dir:
+            try:
+                write_backtest_report(
+                    Path(self.report_dir) / "backtest_report.json",
+                    champion_timeline=champion_timeline,
+                    model_comparison=model_comparison,
+                    key_stats={
+                        "champion_net_return": champion_net,
+                        "champion_mdd": champion_mdd,
+                        "best_candidate_net_return": best_candidate_metrics.get("net_return_percent"),
+                    },
+                )
+            except Exception:
+                pass
 
         return SuiteReport(
             tuning_summary={
                 "num_candidates": len(tuning_candidates),
-                "best_candidate_net_return": best_candidate_net,
+                "best_candidate_net_return": best_candidate_metrics.get("net_return_percent"),
+                "best_candidate_mdd": best_candidate_metrics.get("max_drawdown_percent"),
             },
             decision_summary={
                 "champion_backtest": decision_result.champion_backtest,
                 "candidates_backtest": decision_result.candidates_backtest,
+                "model_comparison": model_comparison,
+                "champion_timeline": champion_timeline,
+                "real_performance": {
+                    "pnl_usdt": real_pnl,
+                    "trades": real_trades,
+                    "win_rate_pct": real_win_rate,
+                }
             },
             recommendation=rec,
             recommendation_reason=reason,
             metrics={
                 "champion_net_return": champion_net,
-                "champion_trades": champion_trades,
-                "best_candidate_net_return": best_candidate_net,
+                "champion_mdd": champion_mdd,
+                "best_candidate_net_return": best_candidate_metrics.get("net_return_percent"),
+                "best_candidate_mdd": best_candidate_metrics.get("max_drawdown_percent"),
+                "best_candidate_fitness": best_candidate_metrics.get("fitness"),
+                "model_comparison": model_comparison,
+                "champion_timeline": champion_timeline,
+                "real_pnl": real_pnl,
+                "real_trades": real_trades,
             },
             generated_at=datetime.now(timezone.utc).isoformat(),
             best_candidate_id=best_candidate_id,

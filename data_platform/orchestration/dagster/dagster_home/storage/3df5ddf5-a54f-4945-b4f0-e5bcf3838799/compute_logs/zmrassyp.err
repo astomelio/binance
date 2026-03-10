@@ -1,0 +1,87 @@
+2026-03-08 15:39:21 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - 10234 - LOGS_CAPTURED - Started capturing logs in process (pid: 10234).
+2026-03-08 15:39:21 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - 10234 - warehouse_dbt_build - STEP_START - Started execution of step "warehouse_dbt_build".
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - [0m15:39:23  Encountered an error:
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - [Errno 13] Permission denied: '/app/data_platform/dbt/logs/dbt.log'
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - [0m15:39:23  Traceback (most recent call last):
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - File "/usr/local/lib/python3.11/site-packages/dbt/cli/requires.py", line 138, in wrapper
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - result, success = func(*args, **kwargs)
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - ^^^^^^^^^^^^^^^^^^^^^
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - File "/usr/local/lib/python3.11/site-packages/dbt/cli/requires.py", line 77, in wrapper
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - setup_event_logger(flags=flags, callbacks=callbacks)
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - File "/usr/local/lib/python3.11/site-packages/dbt/events/logging.py", line 99, in setup_event_logger
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - add_logger_to_manager(
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - File "/usr/local/lib/python3.11/site-packages/dbt_common/events/event_manager_client.py", line 17, in add_logger_to_manager
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - _EVENT_MANAGER.add_logger(logger)
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - File "/usr/local/lib/python3.11/site-packages/dbt_common/events/event_manager.py", line 36, in add_logger
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - _JsonLogger(config) if config.line_format == LineFormat.Json else _TextLogger(config)
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - ^^^^^^^^^^^^^^^^^^^
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - File "/usr/local/lib/python3.11/site-packages/dbt_common/events/logger.py", line 147, in __init__
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - super().__init__(config)
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - File "/usr/local/lib/python3.11/site-packages/dbt_common/events/logger.py", line 107, in __init__
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - file_handler = RotatingFileHandler(
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - ^^^^^^^^^^^^^^^^^^^^
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - File "/usr/local/lib/python3.11/logging/handlers.py", line 155, in __init__
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - BaseRotatingHandler.__init__(self, filename, mode, encoding=encoding,
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - File "/usr/local/lib/python3.11/logging/handlers.py", line 58, in __init__
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - logging.FileHandler.__init__(self, filename, mode=mode,
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - File "/usr/local/lib/python3.11/logging/__init__.py", line 1181, in __init__
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - StreamHandler.__init__(self, self._open())
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - ^^^^^^^^^^^^
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - File "/usr/local/lib/python3.11/logging/__init__.py", line 1213, in _open
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - return open_func(self.baseFilename, self.mode,
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build - PermissionError: [Errno 13] Permission denied: '/app/data_platform/dbt/logs/dbt.log'
+2026-03-08 15:39:23 +0000 - dagster - INFO - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - warehouse_dbt_build
+2026-03-08 15:39:23 +0000 - dagster - ERROR - 08_operacion_testnet_15m - 3df5ddf5-a54f-4945-b4f0-e5bcf3838799 - 10234 - warehouse_dbt_build - STEP_FAILURE - Execution of step "warehouse_dbt_build" failed.
+
+dagster._core.errors.DagsterExecutionStepExecutionError: Error occurred while executing op "warehouse_dbt_build"::
+
+RuntimeError: dbt build failed (exit code 2)
+dbt.log'
+[0m15:39:23  Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/dbt/cli/requires.py", line 138, in wrapper
+    result, success = func(*args, **kwargs)
+                      ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dbt/cli/requires.py", line 77, in wrapper
+    setup_event_logger(flags=flags, callbacks=callbacks)
+  File "/usr/local/lib/python3.11/site-packages/dbt/events/logging.py", line 99, in setup_event_logger
+    add_logger_to_manager(
+  File "/usr/local/lib/python3.11/site-packages/dbt_common/events/event_manager_client.py", line 17, in add_logger_to_manager
+    _EVENT_MANAGER.add_logger(logger)
+  File "/usr/local/lib/python3.11/site-packages/dbt_common/events/event_manager.py", line 36, in add_logger
+    _JsonLogger(config) if config.line_format == LineFormat.Json else _TextLogger(config)
+                                                                      ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dbt_common/events/logger.py", line 147, in __init__
+    super().__init__(config)
+  File "/usr/local/lib/python3.11/site-packages/dbt_common/events/logger.py", line 107, in __init__
+    file_handler = RotatingFileHandler(
+                   ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/logging/handlers.py", line 155, in __init__
+    BaseRotatingHandler.__init__(self, filename, mode, encoding=encoding,
+  File "/usr/local/lib/python3.11/logging/handlers.py", line 58, in __init__
+    logging.FileHandler.__init__(self, filename, mode=mode,
+  File "/usr/local/lib/python3.11/logging/__init__.py", line 1181, in __init__
+    StreamHandler.__init__(self, self._open())
+                                 ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/logging/__init__.py", line 1213, in _open
+    return open_func(self.baseFilename, self.mode,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PermissionError: [Errno 13] Permission denied: '/app/data_platform/dbt/logs/dbt.log'
+
+
+
+Stack Trace:
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/utils.py", line 57, in op_execution_error_boundary
+    yield
+  File "/usr/local/lib/python3.11/site-packages/dagster/_utils/__init__.py", line 394, in iterate_with_context
+    next_output = next(iterator)
+                  ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 135, in _coerce_op_compute_fn_to_iterator
+    result = invoke_compute_fn(
+             ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/dagster/_core/execution/plan/compute_generator.py", line 115, in invoke_compute_fn
+    return fn(context, **args_to_pass) if context_arg_provided else fn(**args_to_pass)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/data_platform/orchestration/dagster/assets.py", line 260, in warehouse_dbt_build
+    raise RuntimeError(f"dbt build failed (exit code {return_code})\n{full_output[-2000:]}")
+

@@ -1,0 +1,21 @@
+2026-03-08 14:06:24 +0000 - dagster - DEBUG - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - 29000 - LOGS_CAPTURED - Started capturing logs in process (pid: 29000).
+2026-03-08 14:06:24 +0000 - dagster - DEBUG - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - 29000 - quant_risk_evaluation - STEP_START - Started execution of step "quant_risk_evaluation".
+2026-03-08 14:06:24 +0000 - dagster - INFO - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - quant_risk_evaluation - Running Risk Engine: /usr/local/bin/python3.11 /app/scripts/run_risk_engine.py
+2026-03-08 14:06:29 +0000 - dagster - INFO - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - quant_risk_evaluation - Risk Engine complete:
+50 >= 0.15
+INFO:trading_lib.risk.engine:raw_signals count before filter: 0
+INFO:trading_lib.risk.engine:sorted_signals count after filter: 0
+INFO:__main__:DEBUG raw_entries count: 0 -> approved: 0
+WARNING:trading_lib.risk.engine:Blocked by drawdown limit: 0.50 >= 0.15
+INFO:trading_lib.risk.engine:raw_signals count before filter: 2
+INFO:trading_lib.risk.engine:sorted_signals count after filter: 2
+INFO:trading_lib.risk.engine:DEBUG sizing for BTCUSDT: conf=0.55, vol=0.05, base=1000.5270009600001, conf_m=0.40, vol_m=0.21, final=83.79
+INFO:trading_lib.risk.engine:DEBUG sizing for ETHUSDT: conf=0.55, vol=0.05, base=1000.5270009600001, conf_m=0.40, vol_m=0.21, final=83.79
+INFO:__main__:REBALANCE: ETHUSDT | SHORT | current=$95.80 -> target=$83.79 | delta=$-12.01 (REDUCE)
+INFO:__main__:REBALANCE: BTCUSDT | LONG | current=$132.92 -> target=$83.79 | delta=$-49.13 (REDUCE)
+INFO:__main__:Inserted 2 raw signals
+INFO:__main__:Inserted 2 orders (Entries: 0, Exits: 0, Rebalances: 2). Risk rejected: 0
+
+2026-03-08 14:06:29 +0000 - dagster - DEBUG - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - 29000 - quant_risk_evaluation - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 14:06:29 +0000 - dagster - DEBUG - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - 29000 - quant_risk_evaluation - ASSET_MATERIALIZATION - Materialized value quant_risk_evaluation.
+2026-03-08 14:06:29 +0000 - dagster - DEBUG - 06_entrenar_modelos - 8ebf6062-a072-45c7-939b-a88d6261eaff - 29000 - quant_risk_evaluation - STEP_SUCCESS - Finished execution of step "quant_risk_evaluation" in 5.4s.

@@ -10,7 +10,7 @@ select
 
 
 select symbol
-from "crypto"."gold"."fct_decision_features"
+from "crypto"."main"."decision_features"
 where symbol is null
 
 

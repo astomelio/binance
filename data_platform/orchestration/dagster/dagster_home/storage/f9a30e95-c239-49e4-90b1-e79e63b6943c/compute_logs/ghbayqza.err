@@ -1,0 +1,21 @@
+2026-03-06 14:22:32 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - f9a30e95-c239-49e4-90b1-e79e63b6943c - 21006 - LOGS_CAPTURED - Started capturing logs in process (pid: 21006).
+2026-03-06 14:22:32 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - f9a30e95-c239-49e4-90b1-e79e63b6943c - 21006 - execute_pending_orders - STEP_START - Started execution of step "execute_pending_orders".
+2026-03-06 14:22:32 +0000 - dagster - INFO - 08_operacion_testnet_15m - f9a30e95-c239-49e4-90b1-e79e63b6943c - execute_pending_orders - Running Order Execution: /usr/local/bin/python3.11 /app/scripts/execute_approved_orders.py
+2026-03-06 14:22:42 +0000 - dagster - INFO - 08_operacion_testnet_15m - f9a30e95-c239-49e4-90b1-e79e63b6943c - execute_pending_orders - Order Execution complete:
+sr/local/lib/python3.11/site-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/requests/adapters.py", line 519, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='binance-connector', port=8000): Max retries exceeded with url: /futures/market/ticker/BTCUSDT (Caused by NameResolutionError("HTTPConnection(host='binance-connector', port=8000): Failed to resolve 'binance-connector' ([Errno -2] Name or service not known)"))
+
+
+2026-03-06 14:22:42 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - f9a30e95-c239-49e4-90b1-e79e63b6943c - 21006 - execute_pending_orders - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-06 14:22:42 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - f9a30e95-c239-49e4-90b1-e79e63b6943c - 21006 - execute_pending_orders - ASSET_MATERIALIZATION - Materialized value execute_pending_orders.
+2026-03-06 14:22:42 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - f9a30e95-c239-49e4-90b1-e79e63b6943c - 21006 - execute_pending_orders - STEP_SUCCESS - Finished execution of step "execute_pending_orders" in 10.44s.

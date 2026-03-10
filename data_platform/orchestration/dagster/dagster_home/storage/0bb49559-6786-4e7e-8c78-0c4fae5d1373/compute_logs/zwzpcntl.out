@@ -1,0 +1,6 @@
+[bronze][SKIP] No ONCHAIN_PROVIDER_URL. Skipping OnChain.
+Starting parallel fetch for 3 collectors...
+[bronze] coingecko/global_market: 1 rows. (Fetch: 0.21s, Write: 0.01s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/coingecko/global_market/dt=2026-03-08/hour=10/part-20260308T101532.jsonl
+[bronze] alternative_me/fear_greed_index: 1 rows. (Fetch: 0.41s, Write: 0.02s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/alternative_me/fear_greed_index/dt=2026-03-08/hour=10/part-20260308T101532.jsonl
+[bronze] dexscreener/dex_snapshot: 1 rows. (Fetch: 0.21s, Write: 0.01s) -> C:/Users/joaqu/OneDrive/Documents/binance/data_lake/bronze/dexscreener/dex_snapshot/dt=2026-03-08/hour=10/part-20260308T101532.jsonl
+Total bronze run time: 2.27s

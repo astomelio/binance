@@ -243,7 +243,7 @@ def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(description="Motor de alertas cuantitativo")
-    parser.add_argument("--symbols", nargs="+", default=["BTCUSDT", "ETHUSDT", "BNBUSDT"])
+    parser.add_argument("--symbols", nargs="+", default=None, help="Symbols to monitor (default: all from DP_SYMBOLS)")
     parser.add_argument("--interval", default="1h")
     parser.add_argument("--capital", type=float, default=500.0)
     parser.add_argument("--loop-seconds", type=int, default=900, help="15m por defecto")
@@ -251,10 +251,15 @@ def main() -> None:
     parser.add_argument("--webhook-url", default="")
     args = parser.parse_args()
 
+    symbols = args.symbols
+    if symbols is None:
+        from data_platform.config import DataPlatformConfig
+        symbols = DataPlatformConfig().symbols
+
     engine = MarketAlertEngine(capital_usd=args.capital)
 
     def run_once() -> None:
-        alerts = engine.scan(args.symbols, interval=args.interval)
+        alerts = engine.scan(symbols, interval=args.interval)
         if not alerts:
             print(f"[{datetime.now().isoformat()}] Sin alertas accionables.")
             return

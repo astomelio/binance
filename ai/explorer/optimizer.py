@@ -87,8 +87,8 @@ def run_optimization(
         if total_trials >= max_total_trials:
             break
 
-    # Ordenar por retorno neto
-    all_results.sort(key=lambda r: r.net_return_percent, reverse=True)
+    # Ordenar por fitness (risk-adjusted)
+    all_results.sort(key=lambda r: r.fitness, reverse=True)
     return all_results
 
 
@@ -144,5 +144,5 @@ def run_optimization_grid(
                 res.meta = dict(res.meta)
                 res.meta["symbol_set"] = sym_set_key
                 all_results.append(res)
-    all_results.sort(key=lambda r: r.net_return_percent, reverse=True)
+    all_results.sort(key=lambda r: r.fitness, reverse=True)
     return all_results

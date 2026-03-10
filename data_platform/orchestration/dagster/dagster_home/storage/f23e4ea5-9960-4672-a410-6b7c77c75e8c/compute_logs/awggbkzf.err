@@ -1,0 +1,5 @@
+2026-03-08 13:48:02 +0000 - dagster - DEBUG - 03_datos_macro - f23e4ea5-9960-4672-a410-6b7c77c75e8c - 6695 - LOGS_CAPTURED - Started capturing logs in process (pid: 6695).
+2026-03-08 13:48:02 +0000 - dagster - DEBUG - 03_datos_macro - f23e4ea5-9960-4672-a410-6b7c77c75e8c - 6695 - bronze_low - STEP_START - Started execution of step "bronze_low".
+2026-03-08 13:48:02 +0000 - dagster - DEBUG - 03_datos_macro - f23e4ea5-9960-4672-a410-6b7c77c75e8c - 6695 - bronze_low - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 13:48:02 +0000 - dagster - DEBUG - 03_datos_macro - f23e4ea5-9960-4672-a410-6b7c77c75e8c - 6695 - bronze_low - ASSET_MATERIALIZATION - Materialized value bronze_low.
+2026-03-08 13:48:02 +0000 - dagster - DEBUG - 03_datos_macro - f23e4ea5-9960-4672-a410-6b7c77c75e8c - 6695 - bronze_low - STEP_SUCCESS - Finished execution of step "bronze_low" in 611ms.

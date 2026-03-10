@@ -1,0 +1,5 @@
+2026-03-08 11:28:51 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 5589b656-1d55-4f13-adfe-0c8a1b008f54 - 30919 - LOGS_CAPTURED - Started capturing logs in process (pid: 30919).
+2026-03-08 11:28:51 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 5589b656-1d55-4f13-adfe-0c8a1b008f54 - 30919 - bronze_low - STEP_START - Started execution of step "bronze_low".
+2026-03-08 11:28:51 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 5589b656-1d55-4f13-adfe-0c8a1b008f54 - 30919 - bronze_low - STEP_OUTPUT - Yielded output "result" of type "Any". (Type check passed).
+2026-03-08 11:28:51 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 5589b656-1d55-4f13-adfe-0c8a1b008f54 - 30919 - bronze_low - ASSET_MATERIALIZATION - Materialized value bronze_low.
+2026-03-08 11:28:51 +0000 - dagster - DEBUG - 08_operacion_testnet_15m - 5589b656-1d55-4f13-adfe-0c8a1b008f54 - 30919 - bronze_low - STEP_SUCCESS - Finished execution of step "bronze_low" in 596ms.
